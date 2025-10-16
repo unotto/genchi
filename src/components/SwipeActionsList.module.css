@@ -280,3 +280,15 @@
     padding: 12px 16px;
   }
 }
+/* フォールバックのドラッグ要素は固定配置・最前面で、レイアウトに影響させない */
+:global(.sortable-fallback) {
+  position: fixed !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+  top: 0; left: 0; /* 位置はJSで制御される */
+}
+
+/* ゴーストは半透明だけ（既存 .dragging と競合しない） */
+:global(.sortable-ghost) {
+  opacity: .6;
+}

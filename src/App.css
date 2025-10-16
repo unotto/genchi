@@ -23,7 +23,7 @@ html, body {
 .app-main{
   position: relative;
   overflow: hidden;
-  height: 75vh;
+  height: auto;
   padding-bottom: 115px;
 }
 

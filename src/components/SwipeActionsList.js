@@ -15,6 +15,11 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
 
+  // タッチ端末判定（iOS/Android 等）
+  const isTouchDevice =
+    typeof window !== "undefined" &&
+    (("ontouchstart" in window) || (navigator && navigator.maxTouchPoints > 0));
+
   // ===== SortableJS（上下入れ替え）=====
   const listRef = useRef(null);
   useEffect(() => {
@@ -24,6 +29,15 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       handle: `.${styles.swl__handle}`,
       draggable: `.${styles.swl__row}`,
       ghostClass: styles.dragging,
+
+      // ---- PCはHTML5 DnD、タッチ端末はフォールバックD&D（即ドラッグ開始）----
+      forceFallback: isTouchDevice,
+      delayOnTouchOnly: false,     // ← タッチでも遅延なし
+      delay: 0,                    // ← 即スタート
+      fallbackTolerance: 0,        // ← 微小移動で即ドラッグ判定
+      touchStartThreshold: 1,
+      fallbackOnBody: true,        // ← helperをbody直下に（レイアウト押し出し防止）
+
       onEnd: (evt) => {
         const from = evt.oldIndex;
         const to = evt.newIndex;
@@ -38,7 +52,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       },
     });
     return () => sortable.destroy();
-  }, [onReorder]);
+  }, [onReorder, isTouchDevice]);
 
   // ===== スワイプ削除処理 =====
   const [swipeState, setSwipeState] = useState(null);
@@ -102,6 +116,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   }, [swipeState, handleTouchMove, handleTouchEnd]);
 
   const startSwipe = (e, rowId) => {
+    // ハンドル上は“スワイプ開始”しない（並べ替え専用）
     if (e.target.closest(`.${styles.swl__handle}`)) return;
     const startX = e.touches ? e.touches[0].clientX : e.clientX;
     const el = rowRefs.current[rowId];
@@ -171,11 +186,15 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onMouseDown={(e) => startSwipe(e, rowId)}
               >
                 <div className={styles.swl__grid}>
-                  {/* 並び替えハンドル */}
+                  {/* 並び替えハンドル（ドラッグ専用） */}
                   <button
                     className={styles.swl__handle}
                     type="button"
                     title="ドラッグで並べ替え"
+                    onTouchStart={(e) => {
+                      // iOSの長押しメニュー抑止（PCには影響なし）
+                      e.preventDefault();
+                    }}
                   >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>
@@ -259,10 +278,10 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                   className={styles.modalMoney}
                   style={{ fontWeight: 700, color: "#0077B6" }}
                 >
-                  {activeRow.right.split("\n")[0]}
+                  {safeLine(activeRow.right, 0)}
                   <br />
                   <small style={{ color: "#6B7280", fontSize: "0.6em" }}>
-                    （{activeRow.right.split("\n")[1] || ""}）
+                    （{safeLine(activeRow.right, 1)}）
                   </small>
                 </div>
               </div>
@@ -276,4 +295,10 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       )}
     </>
   );
+}
+
+function safeLine(text, index) {
+  if (!text) return "";
+  const parts = String(text).split("\n");
+  return parts[index] || "";
 }
