@@ -34,6 +34,10 @@
   overflow:hidden; 
   max-height: 200px; /* 削除アニメーションの基準となる最大値を設定 */
   transition: max-height .3s ease, opacity .3s ease, margin .3s ease;
+
+  /* 追加：テキスト選択を防いでドラッグを安定化（見た目は変わらない） */
+  -webkit-user-select: none;
+  user-select: none;
 } 
 
 .swl__row::before{ 
@@ -49,45 +53,44 @@
   margin-bottom: 0;
 }
 
-
 /* ================================== */
 /* SWIPE ACTION: スワイプで出現するオレンジ色の削除ボタン */
 /* ================================== */
 .swl__deleteAction {
-    position: absolute;
-    right: 0;
-    top: 1%;
-    bottom: 0;
-    width: 80px; /* JSのDELETE_WIDTHと一致 */
-    background-color: var(--orange);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1; /* スワイプ可能コンテンツの下に配置 */
-    cursor: pointer;
-    border: none;
-    padding: 0;
-    /* スワイプで隠れないように、元コンテンツと同じ高さにする */
-    height: 98%; 
+  position: absolute;
+  right: 0;
+  top: 1%;
+  bottom: 0;
+  width: 80px; /* JSのDELETE_WIDTHと一致 */
+  background-color: var(--orange);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1; /* スワイプ可能コンテンツの下に配置 */
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  /* スワイプで隠れないように、元コンテンツと同じ高さにする */
+  height: 98%; 
 }
 .swl__deleteAction img{
-    height: auto;
-    opacity: 1;
+  height: auto;
+  opacity: 1;
 }
 
 /* ================================== */
 /* SWIPEABLE CONTENT: transformで動く要素 */
 /* ================================== */
 .swl__swipeableContent {
-    position: relative;
-    z-index: 2; /* 削除ボタンの上に配置 */
-    background: var(--card); /* 背景を白にして削除ボタンを覆い隠す */
-    will-change: transform; /* アニメーションパフォーマンスのヒント */
-    cursor: grab;
-    touch-action: pan-y;
-    /* transitionはJSで一時的に適用/解除されます */
+  position: relative;
+  z-index: 2; /* 削除ボタンの上に配置 */
+  background: var(--card); /* 背景を白にして削除ボタンを覆い隠す */
+  will-change: transform; /* アニメーションパフォーマンスのヒント */
+  cursor: grab;
+  /* 追加：縦スクロールは許可しつつ、横方向はJS制御に任せる */
+  touch-action: pan-y;
+  /* transitionはJSで一時的に適用/解除されます */
 }
-
 
 /* 横並び：ハンドル / 本文 / 右端ヒント */ 
 .swl__grid{ 
@@ -99,16 +102,29 @@
   min-height:72px; 
 } 
 
-/* 左ハンドル（見た目だけ） */ 
+/* 左ハンドル（見た目そのまま＋挙動系だけ追加） */ 
 .swl__handle{ 
-  display:grid; place-items:center; 
+  display:grid; 
+  place-items:center; 
   padding:10px 2px 10px 0; 
-  background: none; 
-  border: none; 
   background: rgba(104, 114, 128, .25);
+  border: none; 
   height: 100%;
-} 
+
+  /* ▼ 追加：iOS/Androidで“スクロールよりドラッグを優先”させる */
+  touch-action: none;
+  -ms-touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+}
+.swl__handle:active { cursor: grabbing; }
+
+/* 追加：ハンドル画像はイベントを透過（親ボタンに命中させる） */
 .swl__handle img{ 
+  width:10px !important; 
+  height:auto; 
   pointer-events: none;
   -webkit-user-drag: none;
 } 
@@ -119,9 +135,12 @@
 
 /* クリック可能な本文（通貨行＋メモのみ） */ 
 .swl__bodyBtn{ 
-  border:0; background:transparent; 
+  border:0; 
+  background:transparent; 
   text-align:left; 
-  padding:0; width:100%; min-width:0; 
+  padding:0; 
+  width:100%; 
+  min-width:0; 
   cursor:pointer; 
 } 
 .swl__bodyBtn:active{ opacity:.9; } 
@@ -135,9 +154,13 @@
 } 
 
 .swl__line{ 
-  display:flex; align-items:center; gap:10px; 
-  font-weight:600; color:var(--blue); 
-  white-space:nowrap; overflow:hidden; 
+  display:flex; 
+  align-items:center; 
+  gap:10px; 
+  font-weight:600; 
+  color:var(--blue); 
+  white-space:nowrap; 
+  overflow:hidden; 
 } 
 .swl__arrow{ color:#9aa3ad; } 
 .swl__money{} 
@@ -154,9 +177,10 @@
   overflow-wrap:anywhere; 
 } 
 
-/* 右端の薄いゴミ箱（装飾のみ）: ご要望通り保持 */ 
+/* 右端の薄いゴミ箱（装飾のみ） */ 
 .swl__hint{ 
-  display:grid; place-items:center; 
+  display:grid; 
+  place-items:center; 
   padding-right:10px; 
 } 
 .swl__hint img{ 
@@ -281,17 +305,19 @@
     padding: 12px 16px;
   }
 }
+
+/* ===== ここからグローバル（Sortableの内部要素に適用） ===== */
+
 /* フォールバックのドラッグ要素は固定配置・最前面で、レイアウトに影響させない */
 :global(.sortable-fallback) {
   position: fixed !important;
   z-index: 9999 !important;
   pointer-events: none !important;
-  top: 0; left: 0;
+  top: 0; 
+  left: 0;
 }
 
 /* ゴーストは半透明だけ（既存 .dragging と競合しない） */
 :global(.sortable-ghost) {
   opacity: .6;
 }
-
-.gnav { transform: translateZ(0); }

@@ -14,16 +14,12 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
 
-  // タッチ端末判定を精密化（iOS/Android/一部2in1等をカバー）
   const isTouchDevice =
     typeof window !== "undefined" &&
-    (
-      "ontouchstart" in window ||
-      (navigator && navigator.maxTouchPoints > 0) ||
-      (window.matchMedia && window.matchMedia("(pointer: coarse)").matches)
-    );
+    ("ontouchstart" in window ||
+     (navigator && navigator.maxTouchPoints > 0) ||
+     (window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
 
-  // ===== SortableJS（上下入れ替え）=====
   const listRef = useRef(null);
   useEffect(() => {
     if (!listRef.current) return;
@@ -32,15 +28,13 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       handle: `.${styles.swl__handle}`,
       draggable: `.${styles.swl__row}`,
       ghostClass: styles.dragging,
-
-      // PCはHTML5 DnD、タッチ端末はフォールバックD&D（即ドラッグ）
+      // タッチ端末のみフォールバックD&D（即開始）
       forceFallback: isTouchDevice,
       delayOnTouchOnly: false,
       delay: 0,
       fallbackTolerance: 0,
       touchStartThreshold: 1,
       fallbackOnBody: true,
-
       onEnd: (evt) => {
         const from = evt.oldIndex;
         const to = evt.newIndex;
@@ -57,26 +51,23 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     return () => sortable.destroy();
   }, [onReorder, isTouchDevice]);
 
-  // ===== スワイプ削除処理 =====
+  // ===== スワイプ削除 =====
   const [swipeState, setSwipeState] = useState(null);
   const rowRefs = useRef({});
 
-  const handleTouchMove = useCallback(
-    (e) => {
-      if (!swipeState) return;
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const deltaX = clientX - swipeState.startX;
-      if (Math.abs(deltaX) > 10) e.preventDefault();
+  const handleTouchMove = useCallback((e) => {
+    if (!swipeState) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const deltaX = clientX - swipeState.startX;
+    if (Math.abs(deltaX) > 10) e.preventDefault();
 
-      let x = swipeState.initialTranslateX + deltaX;
-      if (x > 0) x = Math.min(0, x / 4);
-      if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
+    let x = swipeState.initialTranslateX + deltaX;
+    if (x > 0) x = Math.min(0, x / 4);
+    if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
 
-      const el = rowRefs.current[swipeState.activeId];
-      if (el) el.style.transform = `translateX(${x}px)`;
-    },
-    [swipeState]
-  );
+    const el = rowRefs.current[swipeState.activeId];
+    if (el) el.style.transform = `translateX(${x}px)`;
+  }, [swipeState]);
 
   const handleTouchEnd = useCallback(() => {
     if (!swipeState) return;
@@ -99,9 +90,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     window.removeEventListener("mousemove", handleTouchMove);
     window.removeEventListener("mouseup", handleTouchEnd);
 
-    setTimeout(() => {
-      if (el) el.style.transition = "none";
-    }, 260);
+    setTimeout(() => { if (el) el.style.transition = "none"; }, 260);
   }, [swipeState, handleTouchMove]);
 
   useEffect(() => {
@@ -119,8 +108,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   }, [swipeState, handleTouchMove, handleTouchEnd]);
 
   const startSwipe = (e, rowId) => {
-    // ハンドル上は“スワイプ開始”しない（並べ替え専用）
-    if (e.target.closest(`.${styles.swl__handle}`)) return;
+    if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドルはスワイプ開始しない
     const startX = e.touches ? e.touches[0].clientX : e.clientX;
     const el = rowRefs.current[rowId];
     const initialX = el?.style.transform
@@ -131,7 +119,6 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   };
 
   const [leavingIds, setLeavingIds] = useState([]);
-
   function deleteRowSmooth(rowId, idx) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
@@ -151,10 +138,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const openPopup = (row) => {
-    setActiveRow(row);
-    setOpen(true);
-  };
+  const openPopup = (row) => { setActiveRow(row); setOpen(true); };
   const closePopup = () => setOpen(false);
 
   return (
@@ -164,24 +148,17 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
           const rowId = row.id ?? idx;
           return (
             <li
-              className={`${styles.swl__row} ${
-                leavingIds.includes(rowId) ? styles.isLeaving : ""
-              }`}
+              className={`${styles.swl__row} ${leavingIds.includes(rowId) ? styles.isLeaving : ""}`}
               key={rowId}
             >
-              {/* 背面：削除ボタン */}
               <button
                 className={styles.swl__deleteAction}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteRowSmooth(rowId, idx);
-                }}
+                onClick={(e) => { e.stopPropagation(); deleteRowSmooth(rowId, idx); }}
               >
                 <img src={trashSolid} alt="削除" />
               </button>
 
-              {/* 前面：スワイプ対象 */}
               <div
                 className={styles.swl__swipeableContent}
                 ref={(el) => (rowRefs.current[rowId] = el)}
@@ -189,56 +166,35 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onMouseDown={(e) => startSwipe(e, rowId)}
               >
                 <div className={styles.swl__grid}>
-                  {/* 並び替えハンドル（ここは“即ドラッグ”を最優先） */}
                   <button
                     className={styles.swl__handle}
                     type="button"
                     title="ドラッグで並べ替え"
-                    onTouchStart={(e) => {
-                      // iOS長押しメニュー抑止。あわせて“画像のpointer-events: none”で命中率UP
-                      e.preventDefault();
-                    }}
-                    onMouseDown={(e) => {
-                      // PCでのフォーカス/クリック既定動作を止め、即ドラッグに集中
-                      e.preventDefault();
-                    }}
+                    onTouchStart={(e) => e.preventDefault()}  // ← 即ドラッグのための抑止
+                    onMouseDown={(e) => e.preventDefault()}   // ← PCでも即ドラッグ
                   >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>
 
-                  {/* 本文（タップで詳細） */}
                   <div className={styles.swl__body}>
                     {row.date && <div className={styles.swl__date}>{row.date}</div>}
-
                     <button
                       type="button"
                       className={styles.swl__bodyBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openPopup(row);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); openPopup(row); }}
                       aria-label="内容を開く"
                     >
                       <div className={styles.swl__contentMask}>
                         <div className={styles.swl__line}>
-                          <span className={`${styles.swl__money} ${styles.em}`}>
-                            {row.left}
-                          </span>
+                          <span className={`${styles.swl__money} ${styles.em}`}>{row.left}</span>
                           <span className={styles.swl__arrow}>→</span>
-                          <span className={`${styles.swl__money} ${styles.em}`}>
-                            {String(row.right).split("\n")[0]}
-                          </span>
+                          <span className={`${styles.swl__money} ${styles.em}`}>{String(row.right).split("\n")[0]}</span>
                         </div>
-                        {row.memo && (
-                          <p className={styles.swl__memo} title={row.memo}>
-                            {row.memo}
-                          </p>
-                        )}
+                        {row.memo && <p className={styles.swl__memo} title={row.memo}>{row.memo}</p>}
                       </div>
                     </button>
                   </div>
 
-                  {/* 右端ゴミ箱アイコン */}
                   <div className={styles.swl__hint} aria-hidden="true">
                     <img src={trashHint} alt="" />
                   </div>
@@ -249,53 +205,23 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
         })}
       </ul>
 
-      {/* ===== モーダル ===== */}
       {open && activeRow && (
         <div className={styles.modalOverlay} role="presentation" onClick={closePopup}>
-          <div
-            className={styles.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-label="詳細表示"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className={styles.modalClose}
-              aria-label="閉じる"
-              onClick={closePopup}
-            >
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-label="詳細表示" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className={styles.modalClose} aria-label="閉じる" onClick={closePopup}>
               <img src={batu} alt="" />
             </button>
-
             <div className={styles.modalScroll}>
-              <div
-                className={styles.modalLine}
-                style={{
-                  display: "grid",
-                  placeItems: "center",
-                  textAlign: "center",
-                  gap: 6,
-                  marginBottom: 10,
-                }}
-              >
+              <div className={styles.modalLine} style={{ display:"grid", placeItems:"center", textAlign:"center", gap:6, marginBottom:10 }}>
                 <div className={styles.modalMoney}>{activeRow.left}</div>
                 <div className={styles.modalArrow}>↓</div>
-                <div
-                  className={styles.modalMoney}
-                  style={{ fontWeight: 700, color: "#0077B6" }}
-                >
+                <div className={styles.modalMoney} style={{ fontWeight:700, color:"#0077B6" }}>
                   {safeLine(activeRow.right, 0)}
                   <br />
-                  <small style={{ color: "#6B7280", fontSize: "0.6em" }}>
-                    （{safeLine(activeRow.right, 1)}）
-                  </small>
+                  <small style={{ color:"#6B7280", fontSize:"0.6em" }}>（{safeLine(activeRow.right, 1)}）</small>
                 </div>
               </div>
-
-              {activeRow.memo && (
-                <p className={styles.modalMemo}>{activeRow.memo}</p>
-              )}
+              {activeRow.memo && <p className={styles.modalMemo}>{activeRow.memo}</p>}
             </div>
           </div>
         </div>
