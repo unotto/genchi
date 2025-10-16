@@ -11,14 +11,17 @@ const DELETE_WIDTH = 80;
 const THRESHOLD = DELETE_WIDTH * 0.4;
 
 export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
-  // 並べ替え対象
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
 
-  // タッチ端末判定（iOS/Android 等）
+  // タッチ端末判定を精密化（iOS/Android/一部2in1等をカバー）
   const isTouchDevice =
     typeof window !== "undefined" &&
-    (("ontouchstart" in window) || (navigator && navigator.maxTouchPoints > 0));
+    (
+      "ontouchstart" in window ||
+      (navigator && navigator.maxTouchPoints > 0) ||
+      (window.matchMedia && window.matchMedia("(pointer: coarse)").matches)
+    );
 
   // ===== SortableJS（上下入れ替え）=====
   const listRef = useRef(null);
@@ -30,13 +33,13 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       draggable: `.${styles.swl__row}`,
       ghostClass: styles.dragging,
 
-      // ---- PCはHTML5 DnD、タッチ端末はフォールバックD&D（即ドラッグ開始）----
+      // PCはHTML5 DnD、タッチ端末はフォールバックD&D（即ドラッグ）
       forceFallback: isTouchDevice,
-      delayOnTouchOnly: false,     // ← タッチでも遅延なし
-      delay: 0,                    // ← 即スタート
-      fallbackTolerance: 0,        // ← 微小移動で即ドラッグ判定
+      delayOnTouchOnly: false,
+      delay: 0,
+      fallbackTolerance: 0,
       touchStartThreshold: 1,
-      fallbackOnBody: true,        // ← helperをbody直下に（レイアウト押し出し防止）
+      fallbackOnBody: true,
 
       onEnd: (evt) => {
         const from = evt.oldIndex;
@@ -165,7 +168,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 leavingIds.includes(rowId) ? styles.isLeaving : ""
               }`}
               key={rowId}
-            >dkffdalsj
+            >
               {/* 背面：削除ボタン */}
               <button
                 className={styles.swl__deleteAction}
@@ -186,13 +189,17 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onMouseDown={(e) => startSwipe(e, rowId)}
               >
                 <div className={styles.swl__grid}>
-                  {/* 並び替えハンドル（ドラッグ専用） */}
+                  {/* 並び替えハンドル（ここは“即ドラッグ”を最優先） */}
                   <button
                     className={styles.swl__handle}
                     type="button"
                     title="ドラッグで並べ替え"
                     onTouchStart={(e) => {
-                      // iOSの長押しメニュー抑止（PCには影響なし）
+                      // iOS長押しメニューやフォーカス誤発火を抑制
+                      e.preventDefault();
+                    }}
+                    onMouseDown={(e) => {
+                      // PCでのフォーカス/クリック既定動作を止め、即ドラッグに集中
                       e.preventDefault();
                     }}
                   >
@@ -219,7 +226,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                           </span>
                           <span className={styles.swl__arrow}>→</span>
                           <span className={`${styles.swl__money} ${styles.em}`}>
-                            {row.right.split("\n")[0]}
+                            {String(row.right).split("\n")[0]}
                           </span>
                         </div>
                         {row.memo && (
