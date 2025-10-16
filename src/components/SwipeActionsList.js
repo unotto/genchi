@@ -165,7 +165,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 leavingIds.includes(rowId) ? styles.isLeaving : ""
               }`}
               key={rowId}
-            >
+            >dkffdalsj
               {/* 背面：削除ボタン */}
               <button
                 className={styles.swl__deleteAction}
