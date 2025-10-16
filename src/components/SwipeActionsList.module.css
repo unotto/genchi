@@ -84,6 +84,7 @@
     background: var(--card); /* 背景を白にして削除ボタンを覆い隠す */
     will-change: transform; /* アニメーションパフォーマンスのヒント */
     cursor: grab;
+    touch-action: pan-y;
     /* transitionはJSで一時的に適用/解除されます */
 }
 
@@ -108,8 +109,8 @@
   height: 100%;
 } 
 .swl__handle img{ 
-  width:10px !important; 
-  height:auto; 
+  pointer-events: none;
+  -webkit-user-drag: none;
 } 
 
 /* 本文 */ 
@@ -285,10 +286,12 @@
   position: fixed !important;
   z-index: 9999 !important;
   pointer-events: none !important;
-  top: 0; left: 0; /* 位置はJSで制御される */
+  top: 0; left: 0;
 }
 
 /* ゴーストは半透明だけ（既存 .dragging と競合しない） */
 :global(.sortable-ghost) {
   opacity: .6;
 }
+
+.gnav { transform: translateZ(0); }

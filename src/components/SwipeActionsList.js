@@ -195,7 +195,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                     type="button"
                     title="ドラッグで並べ替え"
                     onTouchStart={(e) => {
-                      // iOS長押しメニューやフォーカス誤発火を抑制
+                      // iOS長押しメニュー抑止。あわせて“画像のpointer-events: none”で命中率UP
                       e.preventDefault();
                     }}
                     onMouseDown={(e) => {
