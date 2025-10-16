@@ -1,0 +1,92 @@
+:root{
+  --gnav-bg:#ffffff;
+  --gnav-text:#333333;
+  --gnav-muted:#6B7280;
+  --gnav-chip:#6B7280;
+  --gnav-active:#0077B6;
+  --gnav-shadow:0 -6px 18px rgba(0,0,0,.08);
+}
+
+/* 画面下に固定 */
+.gnav{
+  width: 100%;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: space-between;
+  align-items: end;
+  gap: clamp(16px, 6vw, 48px);
+  padding: 18px clamp(12px, 5.5vw, 28px) 15px;
+  background: var(--gnav-bg);
+  border-radius: 20px 20px 0 0;
+  box-shadow: var(--gnav-shadow);
+  z-index: 1000;
+}
+
+.app-main{ padding-bottom: var(--gnav-h); }
+
+.gnav__item{
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+  color: var(--gnav-text);
+  cursor: pointer;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.gnav__chip{
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--gnav-chip);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,.06);
+  transition: background .2s ease, transform .15s ease;
+}
+.gnav__chip img{
+  width: 23px;
+  height: auto;
+  display: block;
+}
+
+.gnav__item:nth-of-type(2) .gnav__chip img { width: 25px; }
+.gnav__item:nth-of-type(3) .gnav__chip img { width: 30px; }
+
+.gnav__label{
+  font-size: 12px;
+  line-height: 1;
+  color: var(--gnav-muted);
+}
+
+/* ★ NavLink で付ける “アクティブ” 用の単独クラス */
+.isActive .gnav__chip{
+  background: var(--gnav-active);
+  transform: translateY(-1px);
+}
+.isActive .gnav__label{
+  color: var(--gnav-text);
+  font-weight: 600;
+}
+
+/* hover/focus */
+.gnav__item:focus-visible .gnav__chip,
+.gnav__item:hover .gnav__chip{
+  outline: 3px solid rgba(0,119,182,.22);
+  outline-offset: 2px;
+}
+
+@media (max-width: 360px){
+  .gnav__chip{ width: 52px; height: 52px; }
+  .gnav__chip img{ width: 26px; height: 26px; }
+}

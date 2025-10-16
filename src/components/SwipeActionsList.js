@@ -1,0 +1,279 @@
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import styles from "./SwipeActionsList.module.css";
+import Sortable from "sortablejs";
+
+import dots from "../img/dot.webp";
+import trashHint from "../img/rubbish-h-icon.webp";
+import trashSolid from "../img/rubbish-icon.webp";
+import batu from "../img/batu.webp";
+
+const DELETE_WIDTH = 80;
+const THRESHOLD = DELETE_WIDTH * 0.4;
+
+export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
+  // 並べ替え対象
+  const [rows, setRows] = useState(items);
+  useEffect(() => setRows(items), [items]);
+
+  // ===== SortableJS（上下入れ替え）=====
+  const listRef = useRef(null);
+  useEffect(() => {
+    if (!listRef.current) return;
+    const sortable = Sortable.create(listRef.current, {
+      animation: 150,
+      handle: `.${styles.swl__handle}`,
+      draggable: `.${styles.swl__row}`,
+      ghostClass: styles.dragging,
+      onEnd: (evt) => {
+        const from = evt.oldIndex;
+        const to = evt.newIndex;
+        if (from === to || from == null || to == null) return;
+        setRows((prev) => {
+          const next = [...prev];
+          const [m] = next.splice(from, 1);
+          next.splice(to, 0, m);
+          onReorder?.(next);
+          return next;
+        });
+      },
+    });
+    return () => sortable.destroy();
+  }, [onReorder]);
+
+  // ===== スワイプ削除処理 =====
+  const [swipeState, setSwipeState] = useState(null);
+  const rowRefs = useRef({});
+
+  const handleTouchMove = useCallback(
+    (e) => {
+      if (!swipeState) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const deltaX = clientX - swipeState.startX;
+      if (Math.abs(deltaX) > 10) e.preventDefault();
+
+      let x = swipeState.initialTranslateX + deltaX;
+      if (x > 0) x = Math.min(0, x / 4);
+      if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
+
+      const el = rowRefs.current[swipeState.activeId];
+      if (el) el.style.transform = `translateX(${x}px)`;
+    },
+    [swipeState]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    if (!swipeState) return;
+    const el = rowRefs.current[swipeState.activeId];
+    if (!el) return;
+
+    const currentX = parseFloat(el.style.transform.replace(/[^0-9-.]/g, "")) || 0;
+    const moved = currentX - swipeState.initialTranslateX;
+    let finalX = 0;
+    if (moved <= -10 || currentX < -THRESHOLD) finalX = -DELETE_WIDTH;
+    else if (moved >= 10) finalX = 0;
+    else finalX = currentX < -THRESHOLD ? -DELETE_WIDTH : 0;
+
+    el.style.transition = "transform .25s ease-out";
+    el.style.transform = `translateX(${finalX}px)`;
+
+    setSwipeState(null);
+    window.removeEventListener("touchmove", handleTouchMove);
+    window.removeEventListener("touchend", handleTouchEnd);
+    window.removeEventListener("mousemove", handleTouchMove);
+    window.removeEventListener("mouseup", handleTouchEnd);
+
+    setTimeout(() => {
+      if (el) el.style.transition = "none";
+    }, 260);
+  }, [swipeState, handleTouchMove]);
+
+  useEffect(() => {
+    if (!swipeState) return;
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd);
+    window.addEventListener("mousemove", handleTouchMove);
+    window.addEventListener("mouseup", handleTouchEnd);
+    return () => {
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("mousemove", handleTouchMove);
+      window.removeEventListener("mouseup", handleTouchEnd);
+    };
+  }, [swipeState, handleTouchMove, handleTouchEnd]);
+
+  const startSwipe = (e, rowId) => {
+    if (e.target.closest(`.${styles.swl__handle}`)) return;
+    const startX = e.touches ? e.touches[0].clientX : e.clientX;
+    const el = rowRefs.current[rowId];
+    const initialX = el?.style.transform
+      ? parseFloat(el.style.transform.replace(/[^0-9-.]/g, ""))
+      : 0;
+    if (el) el.style.transition = "none";
+    setSwipeState({ startX, activeId: rowId, initialTranslateX: initialX });
+  };
+
+  const [leavingIds, setLeavingIds] = useState([]);
+
+  function deleteRowSmooth(rowId, idx) {
+    setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
+    setTimeout(() => {
+      setRows((prev) => prev.filter((_, i) => i !== idx));
+      onDelete?.(idx);
+      setLeavingIds((prev) => prev.filter((id) => id !== rowId));
+    }, 300);
+  }
+
+  // ===== モーダル =====
+  const [open, setOpen] = useState(false);
+  const [activeRow, setActiveRow] = useState(null);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const openPopup = (row) => {
+    setActiveRow(row);
+    setOpen(true);
+  };
+  const closePopup = () => setOpen(false);
+
+  return (
+    <>
+      <ul className={styles.swl} ref={listRef}>
+        {rows.map((row, idx) => {
+          const rowId = row.id ?? idx;
+          return (
+            <li
+              className={`${styles.swl__row} ${
+                leavingIds.includes(rowId) ? styles.isLeaving : ""
+              }`}
+              key={rowId}
+            >
+              {/* 背面：削除ボタン */}
+              <button
+                className={styles.swl__deleteAction}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteRowSmooth(rowId, idx);
+                }}
+              >
+                <img src={trashSolid} alt="削除" />
+              </button>
+
+              {/* 前面：スワイプ対象 */}
+              <div
+                className={styles.swl__swipeableContent}
+                ref={(el) => (rowRefs.current[rowId] = el)}
+                onTouchStart={(e) => startSwipe(e, rowId)}
+                onMouseDown={(e) => startSwipe(e, rowId)}
+              >
+                <div className={styles.swl__grid}>
+                  {/* 並び替えハンドル */}
+                  <button
+                    className={styles.swl__handle}
+                    type="button"
+                    title="ドラッグで並べ替え"
+                  >
+                    <img src={dots} alt="" aria-hidden="true" />
+                  </button>
+
+                  {/* 本文（タップで詳細） */}
+                  <div className={styles.swl__body}>
+                    {row.date && <div className={styles.swl__date}>{row.date}</div>}
+
+                    <button
+                      type="button"
+                      className={styles.swl__bodyBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openPopup(row);
+                      }}
+                      aria-label="内容を開く"
+                    >
+                      <div className={styles.swl__contentMask}>
+                        <div className={styles.swl__line}>
+                          <span className={`${styles.swl__money} ${styles.em}`}>
+                            {row.left}
+                          </span>
+                          <span className={styles.swl__arrow}>→</span>
+                          <span className={`${styles.swl__money} ${styles.em}`}>
+                            {row.right.split("\n")[0]}
+                          </span>
+                        </div>
+                        {row.memo && (
+                          <p className={styles.swl__memo} title={row.memo}>
+                            {row.memo}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* 右端ゴミ箱アイコン */}
+                  <div className={styles.swl__hint} aria-hidden="true">
+                    <img src={trashHint} alt="" />
+                  </div>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* ===== モーダル ===== */}
+      {open && activeRow && (
+        <div className={styles.modalOverlay} role="presentation" onClick={closePopup}>
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="詳細表示"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className={styles.modalClose}
+              aria-label="閉じる"
+              onClick={closePopup}
+            >
+              <img src={batu} alt="" />
+            </button>
+
+            <div className={styles.modalScroll}>
+              <div
+                className={styles.modalLine}
+                style={{
+                  display: "grid",
+                  placeItems: "center",
+                  textAlign: "center",
+                  gap: 6,
+                  marginBottom: 10,
+                }}
+              >
+                <div className={styles.modalMoney}>{activeRow.left}</div>
+                <div className={styles.modalArrow}>↓</div>
+                <div
+                  className={styles.modalMoney}
+                  style={{ fontWeight: 700, color: "#0077B6" }}
+                >
+                  {activeRow.right.split("\n")[0]}
+                  <br />
+                  <small style={{ color: "#6B7280", fontSize: "0.6em" }}>
+                    （{activeRow.right.split("\n")[1] || ""}）
+                  </small>
+                </div>
+              </div>
+
+              {activeRow.memo && (
+                <p className={styles.modalMemo}>{activeRow.memo}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

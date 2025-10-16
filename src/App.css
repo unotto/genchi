@@ -1,38 +1,517 @@
-.App {
-  text-align: center;
+:root{
+  /* ブランド/ベース（あなたの指定に合わせています） */
+  --blue:#0077B6;         /* メインブルー */
+  --orange:#FF6B35;       /* アクセント（未使用だが残す） */
+  --green:#06D6A0;
+  --bg:#F9FAFB;           /* 背景 */
+  --card:#FFFFFF;
+  --text:#333333;
+  --muted:#6B7280;
+  --success:#22C55E;
+  --warning:#FACC15;
+  --error:#EF4444;
+  --radius:16px;
+  --shadow:0 6px 16px rgba(0,0,0,.08);
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+html, body {
+  background: #eef1f5;
+  min-height: 100%;
+  margin: 0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.app-main{
+  position: relative;
+  overflow: hidden;
+  height: 75vh;
+  padding-bottom: 115px;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.page-body {
+  background: #eef1f5;
+  min-height: 100%;
+  margin: 0;
+  padding: 20px;
+}
+
+.page-body2 {
+  background: #eef1f5;
+  min-height: 100%;
+  margin: 0;
+  padding:  20px 0 0 20px;
+}
+
+.app-header{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr auto ; 
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  padding: 10px max(12px, env(safe-area-inset-left)) 10px max(12px, env(safe-area-inset-right));
+  background: #fff;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.app-logo{
+  width: 100%;
+}
+.app-logo img{
+  height: 28px;       /* 端末に合わせて縮む */
+  width: auto;
+  margin-left: 2.5em;
 }
 
-.App-link {
-  color: #61dafb;
+/* ハンバーガーボタン */
+.hamburger-btn{
+  justify-self: end;
+  background: none;
+  border: 0;
+  padding: 10px;      /* タップ領域確保 */
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  cursor: pointer;
+}
+.hamburger-btn .bar{
+  width: 22px;
+  height: 2px;
+  background: #6b7280;
+  border-radius: 2px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* すごく小さい端末用の微調整 */
+@media (max-width: 360px){
+  .app-logo img{ height: 24px; }
+  .hamburger-btn .bar{ width: 20px; }
+  .hamburger-btn{ padding: 8px; }
 }
+
+/* 右端に謎の影が出る場合の保険（オーバーフロー抑制） */
+.app-wrap{
+  overflow-x: hidden;
+}
+
+/***** ホーム *****/
+.home {
+  display: inline-flex;
+  align-items: center;
+  font-size: 16px;
+  gap: 8px; 
+  background: url('./img/home-icon.webp') no-repeat 8% center / 0.98em;
+  padding-left: 1.8em;
+  margin-bottom: 10px;
+}
+
+.card-form{
+  border-radius: 20px;
+}
+
+.unit-badge {
+  display: inline-block;
+  min-width: 48px;
+  text-align: center;
+  background: #fff;
+  border-radius: 999px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+/* ラベル */
+.label{
+  display:block;
+  font-size:.92rem;
+  color:var(--muted);
+  margin: 10px 10px 6px;
+  line-height:1.25;
+}
+.label .hint{
+  display:block;
+  font-size:.78rem;
+  color:var(--muted);
+  opacity:.9;
+  margin-top:6px;
+}
+
+/* 入力系（共通の見た目だけ） */
+.like-input{
+  width:100%;
+  background:#fff;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 16px;
+  font-size: 16px;
+  color: var(--text);
+  outline:none;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.1);
+}
+.like-input:focus{
+  border-color: rgba(0,119,182,.35);
+  box-shadow: 0 0 0 3px rgba(0,119,182,.18);
+}
+
+/* 実input/textarea */
+.input{ appearance:none; }
+.textarea{
+  border-radius: 14px;
+  resize: vertical;
+  min-height: 120px;
+  padding: 14px 16px;
+}
+
+/* セレクト風ボタン */
+.select{
+  position: relative;
+  display:flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.select__value{
+  color: var(--muted);
+}
+.select__caret{
+  font-size: 18px;
+  color: var(--muted);
+}
+
+/* 結果ボックス（白い角丸エリア） */
+.result-box {
+  border-radius: 14px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  color: var(--text);
+}
+
+/* placeholder風 */
+.result-box .placeholder {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+/* 計算結果 */
+.result-box .result-value {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* ボタン行 */
+.actions{
+  width: 80%;
+  display:flex;
+  gap:10px;
+  justify-content: space-between;
+  margin: 14px auto 4px;
+}
+.btn{
+  flex:1;
+  border:none;
+  border-radius: 999px;
+  padding: 12px 14px;
+  font-size: 14px;
+  cursor:pointer;
+  transition: transform .06s ease, box-shadow .2s ease, background .2s ease;
+}
+.btn:active{ transform: translateY(1px); }
+
+.btn-primary{
+  background: var(--blue);
+  color:#fff;
+  display: none;
+}
+.btn-primary:hover{ filter:brightness(1.02); }
+
+.btn-outline{
+  background: var(--blue);
+  color:#fff;
+}
+
+/* 金額入力の横並び */
+.amountRow{
+  display: flex;
+  align-items: stretch;      /* 高さを揃える */
+  gap: 8px;
+}
+
+.oneInput {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: #fff;
+  border-radius: 999px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.1);
+  border: 1px solid transparent;
+}
+
+.oneInput:focus-within {
+  border-color: rgba(0,119,182,.35);
+  box-shadow: 0 0 0 3px rgba(0,119,182,.18);
+}
+
+.oneInput__control {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.oneInput__unit {
+  margin-left: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--muted);
+  pointer-events: none; /* クリックを通す */
+}
+
+
+/* ペア履歴リンク */
+.link-row{
+  text-align:right;
+  margin: 8px 6px 0;
+}
+.inline-link{
+  color: var(--blue);
+  text-decoration: none;
+  font-size:.92rem;
+}
+.inline-link:hover{ text-decoration: underline; }
+
+/* 余白揃え */
+.field + .field{ margin-top: 10px; }
+
+/* 小さめ端末でのフォント縮小がキツい時は調整 */
+@media (max-width: 360px){
+  .like-input{ padding: 12px 14px; }
+  .btn{ padding: 11px 12px; }
+}
+
+
+/***** ペア履歴 *****/
+.pair {
+  display: inline-flex;
+  align-items: center;
+  font-size: 16px;
+  gap: 8px; 
+  background: url('./img/pair-icon.webp') no-repeat 5% center /1em 1em ;
+  padding-left: 1.3em;
+  margin-bottom: 10px;
+}
+
+/***** レート推移 *****/
+.rate {
+  display: inline-flex;
+  align-items: center;
+  font-size: 16px;
+  gap: 8px; 
+  background: url('./img/rate-icon.webp') no-repeat left center / 1.3em 0.9em ;
+  padding-left: 1.5em;
+  margin-bottom: 10px;
+}
+
+/* アクセシビリティ用（視覚的に隠すラベル） */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
+/* セレクトのラッパ（右端の三角を擬似要素で描く） */
+.selectWrap {
+  position: relative;
+}
+.selectWrap::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid #6B7280; /* 三角（下向き） */
+  transform: translateY(-50%);
+  pointer-events: none; /* クリック透過 */
+}
+
+/* ネイティブ<select>をカード風に */
+.select {
+  width: 100%;
+  padding: 12px 40px 12px 12px; /* 右は三角スペース確保 */
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  color: #333;
+  background: #fff;
+  /* OSのデフォルトUIを消して自前描画へ */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-shadow: 0 2px 0 rgba(0,0,0,.08);
+}
+.select:focus {
+  outline: none;
+  border-color: #0077B6;
+  box-shadow: 0 0 0 3px rgba(0,119,182,.18);
+}
+.select:hover {
+  border-color: #D1D5DB;
+}
+
+/* チャートカード（白ベース） */
+.chartCard {
+  background: #fff;
+  border: 1px solid #EEE;
+  border-radius: 14px;
+  box-shadow: 0 2px 0 rgba(0,0,0,.06);
+  overflow: hidden;
+}
+.chartHeader {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px dashed #E5E7EB;
+}
+.chartTitle {
+  font-size: 0.9rem;
+  color: #6B7280;
+}
+.chartArea {
+  height: 220px;
+  display: grid;
+  place-items: center;
+  color: #9CA3AF;
+}
+
+/* 共通余白 */
+.field { margin-bottom: 12px; }
+
+.icon {
+  width: auto;
+  height: auto; 
+  display: inline-block;
+}
+
+
+/* ====== Header: ロゴ中央固定＋ハンバーガー右上 ====== */
+.app-wrap {
+  position: relative;
+  min-height: 100vh;
+  background: #eef1f5;
+  overflow-x: hidden;
+}
+
+/* ヘッダー */
+.app-header {
+  width: 100%;
+  padding: 10px 16px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 10;
+}
+
+
+/* ====== About Drawer: 閉じてる時は影ゼロ（右端の影消す） ====== */
+.aboutOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.32);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+  z-index: 1002;
+}
+.aboutOverlay.is-open{
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.aboutDrawer{
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: min(88vw, 420px);
+  background: #fff;
+  /* ← ここを初期は影なしに */
+  box-shadow: none;
+  transform: translateX(100%);
+  transition: transform .28s ease, box-shadow .2s ease;
+  z-index: 1003;
+  padding: 18px 16px 20px;
+  overflow-y: auto;
+}
+.aboutDrawer.is-open{
+  transform: translateX(0);
+  /* 開いた時だけ影を付ける */
+  box-shadow: -12px 0 30px rgba(0,0,0,.12);
+}
+
+.aboutClose{
+  position: absolute;
+  top: 10px; right: 12px;
+  border: none;
+  background: transparent;
+  font-size: 20px;           /* サイト標準に寄せる */
+  cursor: pointer;
+  color: #6B7280;
+}
+
+/* ====== About テキストサイズをサイト標準に合わせる ====== */
+.aboutTitle{
+  margin: 6px 0 10px;
+  font-size: 1rem;           /* 大きすぎない */
+  color: #111827;
+}
+.aboutLead{
+  color: #374151;
+  line-height: 1.6;
+  background: #F9FAFB;
+  border: 1px dashed #E5E7EB;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+.aboutList{
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: #374151;
+  font-size: 0.95rem;
+}
+.aboutList li{ margin: 6px 0; }
+.aboutCallout{
+  background: #F9FAFB;
+  line-height: 1.6;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 12px;
+  font-size: 0.95rem;
+}
+.aboutMeta{
+  font-size: .88rem;
+  color: #6B7280;
+  border-top: 1px dashed #E5E7EB;
+  padding-top: 10px;
+}
+
+/* GNavi が他要素に隠れないよう最前面に */
+.gnav{
+  z-index: 1100; /* 以前 1000 だったなら少し上げる */
+}
+
+/* ドロワー系は GNavi より下げる（開いてる時だけ最前面にしたいならこのままでOK） */
+.aboutOverlay{ z-index: 1000; }
+.aboutPanel{   z-index: 1001; }
+
