@@ -5,6 +5,9 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 
+// ★ 追加：Home.js と同じ日本語名ヘルパーだけ借ります
+import { jpName } from "../lib/rates";
+
 // Home.jsx と同じペア（指定リスト）
 const PAIRS = [
   "USD-JPY","EUR-JPY","GBP-JPY","AUD-JPY","CAD-JPY","NZD-JPY","CHF-JPY",
@@ -13,7 +16,7 @@ const PAIRS = [
   "NOK-JPY","TRY-JPY","MXN-JPY","ZAR-JPY",
 ];
 
-// 通貨記号
+// 通貨記号（元のまま）
 const symbolOf = (c) => ({
   USD:"$", EUR:"€", GBP:"£", JPY:"¥", KRW:"₩", CNY:"¥", CNH:"¥", HKD:"HK$",
   TWD:"NT$", THB:"฿", SGD:"S$", PHP:"₱", MYR:"RM", IDR:"Rp", VND:"₫",
@@ -25,6 +28,13 @@ function parsePair(v){
   if (!v) return { base:"", quote:"" };
   const [b,q] = v.toUpperCase().split("-");
   return { base:b, quote:q };
+}
+
+// ★ 追加：表示用ラベル（国名＋通貨コード）。内部値は従来通り "USD-JPY"
+function pairLabel(p){
+  if (!p) return "通貨ペア未選択";
+  const { base, quote } = parsePair(p);
+  return `${jpName(base)} ${base} → ${jpName(quote)} ${quote}`;
 }
 
 // CNH → CNY 変換（exchangerate.host は CNH が弱いため）
@@ -53,7 +63,7 @@ function enumerateDates(startStr, endStr){
   return out;
 }
 
-// 0.5刻みで 5 本 tick
+// 0.5刻みで 5 本 tick（元のまま）
 function makeTicks(minVal, maxVal){
   if (!isFinite(minVal) || !isFinite(maxVal)) return undefined;
   const floor05 = (v)=> Math.floor(v*2)/2;
@@ -67,7 +77,7 @@ function makeTicks(minVal, maxVal){
   return ticks;
 }
 
-/* ------------------- 外部 API 呼び出し群 ------------------- */
+/* ------------------- 外部 API 呼び出し群（元のまま） ------------------- */
 
 // 1) exchangerate.host timeseries
 async function fetchTimeseries(base, quote, start, end){
@@ -101,7 +111,6 @@ async function fetchDailySeries(base, quote, start, end){
 
 // 3) frankfurter.app の時系列
 async function fetchFrankfurter(base, quote, start, end){
-  // Frankfurter は主要通貨寄り（KRW など一部弱い）。失敗したら投げる。
   const url = `https://api.frankfurter.app/${start}..${end}?from=${encodeURIComponent(base)}&to=${encodeURIComponent(quote)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("frankfurter-network");
@@ -128,13 +137,11 @@ async function fetchLatest(base, quote){
 // 5) 擬似データ（最新レート around のランダムウォーク）
 function synthSeriesFromLatest(latest, start, end){
   const days = enumerateDates(start, end);
-  // 変動幅は 0.3% 程度で揺らす
   let v = latest;
   const arr = days.map(d => {
     const noise = (Math.random() - 0.5) * 0.006; // ±0.3%
     v = Math.max(0.0001, v * (1 + noise));
-    // 小数 1 桁（0.5 刻みっぽく丸め）
-    const rounded = Math.round(v * 2) / 2;
+    const rounded = Math.round(v * 2) / 2;      // 小数1桁相当（0.5刻み風）
     return { date: d, rate: rounded };
   });
   return arr;
@@ -152,7 +159,7 @@ function synthSeriesFixed(start, end, baseValue=100){
   });
 }
 
-/* ------------------- 画面本体 ------------------- */
+/* ------------------- 画面本体（元の見た目を維持） ------------------- */
 
 export default function Rate() {
   const [pair, setPair] = useState("");
@@ -241,7 +248,7 @@ export default function Rate() {
       <section>
         <Current title="レート推移" className="rate" />
 
-        {/* 通貨ペアセレクト */}
+        {/* 通貨ペアセレクト（★表示テキストのみ変更・スタイル/構造はそのまま） */}
         <div className="field">
           <label className="sr-only" htmlFor="pair-select">通貨ペア</label>
           <div className="selectWrap">
@@ -253,13 +260,13 @@ export default function Rate() {
             >
               <option value="">通貨ペア選択</option>
               {PAIRS.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>{pairLabel(p)}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* 期間セレクト */}
+        {/* 期間セレクト（元のまま） */}
         <div className="field">
           <label className="sr-only" htmlFor="period-select">期間</label>
           <div className="selectWrap">
@@ -276,12 +283,13 @@ export default function Rate() {
           </div>
         </div>
 
-        {/* チャートカード（既存デザイン尊重） */}
+        {/* チャートカード（色・余白・文言は元のまま） */}
         <div className="field">
           <div className="chartCard">
             <div className="chartHeader" style={{ justifyContent: "space-between", gap: 8 }}>
               <span className="chartTitle">
-                {pair || "通貨ペア未選択"} ／ {period}日
+                {/* ★タイトルだけ国名＋コードに変更 */}
+                {pair ? `${pairLabel(pair)} ／ ${period}日` : "通貨ペア未選択 ／ " + period + "日"}
               </span>
               {usedMock && (
                 <span style={{ fontSize: 12, color: "#9CA3AF" }}>※API失敗のため仮データ</span>
