@@ -14,30 +14,40 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
 
-  const isTouchDevice =
-    typeof window !== "undefined" &&
-    ("ontouchstart" in window ||
-     (navigator && navigator.maxTouchPoints > 0) ||
-     (window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
-
   const listRef = useRef(null);
+  const rowRefs = useRef({});
+  const [swipeState, setSwipeState] = useState(null);
+  const [leavingIds, setLeavingIds] = useState([]);
+
+  // ====== Sortable（並べ替え） ======
   useEffect(() => {
     if (!listRef.current) return;
+
     const sortable = Sortable.create(listRef.current, {
       animation: 150,
       handle: `.${styles.swl__handle}`,
       draggable: `.${styles.swl__row}`,
       ghostClass: styles.dragging,
-      // タッチ端末のみフォールバックD&D（即開始）
-      forceFallback: isTouchDevice,
+
+      // ★ モバイル＆非Chrome対策：フォールバックD&Dを常に使用
+      forceFallback: true,
+      fallbackOnBody: true,
+      touchStartThreshold: 3,
+      fallbackTolerance: 3,
       delayOnTouchOnly: false,
       delay: 0,
-      fallbackTolerance: 0,
-      touchStartThreshold: 1,
-      fallbackOnBody: true,
+
+      // ★ iOS Safari 向けのセット（HTML5 DnD仕様対策）
+      setData: (dt) => { try { dt.setData("text/plain", ""); } catch (_) {} },
+
+      onStart() {
+        // 念のため、スワイプ対象のトランジションをオフ
+        Object.values(rowRefs.current).forEach((el) => {
+          if (el) el.style.transition = "none";
+        });
+      },
       onEnd: (evt) => {
-        const from = evt.oldIndex;
-        const to = evt.newIndex;
+        const from = evt.oldIndex, to = evt.newIndex;
         if (from === to || from == null || to == null) return;
         setRows((prev) => {
           const next = [...prev];
@@ -48,17 +58,25 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
         });
       },
     });
-    return () => sortable.destroy();
-  }, [onReorder, isTouchDevice]);
 
-  // ===== スワイプ削除 =====
-  const [swipeState, setSwipeState] = useState(null);
-  const rowRefs = useRef({});
+    return () => sortable.destroy();
+  }, [onReorder]);
+
+  // ====== スワイプ（削除ボタン露出） ======
+  const getCurrentX = (el) => {
+    if (!el) return 0;
+    const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform);
+    if (m) return parseFloat(m[1]);
+    const num = parseFloat(el.style.transform.replace(/[^0-9-.]/g, ""));
+    return isNaN(num) ? 0 : num;
+  };
 
   const handleTouchMove = useCallback((e) => {
     if (!swipeState) return;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const deltaX = clientX - swipeState.startX;
+    const p = e.touches ? e.touches[0] : e;
+    const deltaX = p.clientX - swipeState.startX;
+
+    // 横に十分動いたら縦スクロールを抑止
     if (Math.abs(deltaX) > 10) e.preventDefault();
 
     let x = swipeState.initialTranslateX + deltaX;
@@ -74,7 +92,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     const el = rowRefs.current[swipeState.activeId];
     if (!el) return;
 
-    const currentX = parseFloat(el.style.transform.replace(/[^0-9-.]/g, "")) || 0;
+    const currentX = getCurrentX(el);
     const moved = currentX - swipeState.initialTranslateX;
     let finalX = 0;
     if (moved <= -10 || currentX < -THRESHOLD) finalX = -DELETE_WIDTH;
@@ -95,8 +113,9 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   useEffect(() => {
     if (!swipeState) return;
+    // ★ passive:false で preventDefault を有効に
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd);
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
     window.addEventListener("mousemove", handleTouchMove);
     window.addEventListener("mouseup", handleTouchEnd);
     return () => {
@@ -108,17 +127,17 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   }, [swipeState, handleTouchMove, handleTouchEnd]);
 
   const startSwipe = (e, rowId) => {
-    if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドルはスワイプ開始しない
-    const startX = e.touches ? e.touches[0].clientX : e.clientX;
+    // ハンドル上はスワイプ開始しない（ドラッグ専用）
+    if (e.target.closest(`.${styles.swl__handle}`)) return;
+    const p = e.touches ? e.touches[0] : e;
+    const startX = p.clientX;
     const el = rowRefs.current[rowId];
-    const initialX = el?.style.transform
-      ? parseFloat(el.style.transform.replace(/[^0-9-.]/g, ""))
-      : 0;
+    const initialX = el ? getCurrentX(el) : 0;
     if (el) el.style.transition = "none";
     setSwipeState({ startX, activeId: rowId, initialTranslateX: initialX });
   };
 
-  const [leavingIds, setLeavingIds] = useState([]);
+  // ====== 削除アニメーション ======
   function deleteRowSmooth(rowId, idx) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
@@ -128,7 +147,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     }, 300);
   }
 
-  // ===== モーダル =====
+  // ====== モーダル ======
   const [open, setOpen] = useState(false);
   const [activeRow, setActiveRow] = useState(null);
   useEffect(() => {
@@ -170,8 +189,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                     className={styles.swl__handle}
                     type="button"
                     title="ドラッグで並べ替え"
-                    onTouchStart={(e) => e.preventDefault()}  // ← 即ドラッグのための抑止
-                    onMouseDown={(e) => e.preventDefault()}   // ← PCでも即ドラッグ
+                    // ★ ここにあった preventDefault は削除（モバイルD&Dを阻害）
                   >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>
