@@ -181,11 +181,13 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onMouseDown={(e) => startSwipe(e, rowId)}
               >
                 <div className={styles.swl__grid}>
-                  <button
-                    className={styles.swl__handle}
-                    type="button"
-                    title="ドラッグで並べ替え"
-                  >
+                    <button
+                      className={styles.swl__handle}
+                      type="button"
+                      title="ドラッグで並べ替え"
+                      onTouchStart={(e) => { e.preventDefault(); /* iOSでD&Dを最優先 */ }}
+                      onMouseDown={(e) => { e.preventDefault(); /* PCでもドラッグ開始を確実に */ }}
+                    >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>
 
