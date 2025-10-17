@@ -158,7 +158,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const closePopup = () => setOpen(false);
 
   return (
-    <>
+    <>もうわからねーよ馬鹿野郎
       <ul className={styles.swl} ref={listRef}>
         {rows.map((row, idx) => {
           const rowId = row.id ?? idx;
