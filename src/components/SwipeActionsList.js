@@ -29,7 +29,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       draggable: `.${styles.swl__row}`,
       ghostClass: styles.dragging,
 
-      // ★ モバイル＆非Chrome対策：フォールバックD&Dを常に使用
+      // ★ ここが重要：Safari/Firefox/Android WebViewでも安定
       forceFallback: true,
       fallbackOnBody: true,
       touchStartThreshold: 3,
@@ -37,7 +37,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       delayOnTouchOnly: false,
       delay: 0,
 
-      // ★ iOS Safari 向けのセット（HTML5 DnD仕様対策）
+      // ★ iOS Safari のDrag要件（HTML5 DnD時に必要。フォールバックでも害なし）
       setData: (dt) => { try { dt.setData("text/plain", ""); } catch (_) {} },
 
       onStart() {
@@ -76,7 +76,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     const p = e.touches ? e.touches[0] : e;
     const deltaX = p.clientX - swipeState.startX;
 
-    // 横に十分動いたら縦スクロールを抑止
+    // 横に十分動いたら縦スクロールを抑止（モバイルで必須）
     if (Math.abs(deltaX) > 10) e.preventDefault();
 
     let x = swipeState.initialTranslateX + deltaX;
@@ -113,7 +113,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   useEffect(() => {
     if (!swipeState) return;
-    // ★ passive:false で preventDefault を有効に
+    // ★ passive:false で preventDefault を有効化
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
     window.addEventListener("mousemove", handleTouchMove);
@@ -189,7 +189,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                     className={styles.swl__handle}
                     type="button"
                     title="ドラッグで並べ替え"
-                    // ★ ここにあった preventDefault は削除（モバイルD&Dを阻害）
+                    // ← 以前ここにあった preventDefault は削除（ドラッグ殺しの元）
                   >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>

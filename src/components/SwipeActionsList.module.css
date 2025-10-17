@@ -88,7 +88,7 @@
   will-change: transform; /* アニメーションパフォーマンスのヒント */
   cursor: grab;
   /* 追加：縦スクロールは許可しつつ、横方向はJS制御に任せる */
-  touch-action: pan-y;
+  touch-action: pan-y; 
   /* transitionはJSで一時的に適用/解除されます */
 }
 
