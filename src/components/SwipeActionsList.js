@@ -10,6 +10,9 @@ import batu from "../img/batu.webp";
 const DELETE_WIDTH = 80;
 const THRESHOLD = DELETE_WIDTH * 0.4;
 
+// iOS / WKWebView 判定（Safari含む）
+const isIOS = typeof navigator !== "undefined" && /iP(hone|ad|od)/.test(navigator.userAgent);
+
 export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
@@ -18,19 +21,21 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const rowRefs = useRef({});
   const [swipeState, setSwipeState] = useState(null);
   const [leavingIds, setLeavingIds] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [activeRow, setActiveRow] = useState(null);
 
-  // 並べ替え（ハンドル限定 / iOS対応）
+  // ====== 並べ替え（SortableJS：ハンドル限定 / フォールバック強制） ======
   useEffect(() => {
     if (!listRef.current) return;
 
     const sortable = Sortable.create(listRef.current, {
       animation: 150,
-      handle: `.${styles.swl__handle}`,    // ハンドルでのみドラッグ開始
+      handle: `.${styles.swl__handle}`, // ハンドルのみ
       draggable: `.${styles.swl__row}`,
       direction: "vertical",
       ghostClass: styles.dragging,
 
-      // iOS / 非Chrome 安定化
+      // iOS/非Chrome 安定化
       forceFallback: true,
       fallbackOnBody: true,
       touchStartThreshold: 1,
@@ -39,11 +44,9 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       delay: 0,
       setData: (dt) => { try { dt.setData("text/plain", ""); } catch (_) {} },
 
-      // ← ここにあった cancel は削除（ハンドル内のimgタップもドラッグ可にする）
-      // preventOnFilter も不要
-
       onStart() {
-        Object.values(rowRefs.current).forEach((el) => { if (el) el.style.transition = "none"; });
+        // スワイプ中のtransitionを切る
+        Object.values(rowRefs.current).forEach((el) => { if (el) el && (el.style.transition = "none"); });
       },
       onEnd: (evt) => {
         const from = evt.oldIndex, to = evt.newIndex;
@@ -62,6 +65,9 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   }, [onReorder]);
 
   // ====== スワイプ（削除ボタン表示） ======
+  // iOS ではセーフモード：スワイプを完全無効にしてドラッグに専念
+  const swipeEnabled = !isIOS;
+
   const getCurrentX = (el) => {
     if (!el) return 0;
     const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform || "");
@@ -71,21 +77,19 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   };
 
   const handleTouchMove = useCallback((e) => {
-    if (!swipeState) return;
+    if (!swipeEnabled || !swipeState) return;
     const p = e.touches ? e.touches[0] : e;
     const deltaX = p.clientX - swipeState.startX;
-    if (Math.abs(deltaX) > 10) e.preventDefault(); // 横移動中は縦スクロール抑止
-
+    if (Math.abs(deltaX) > 10) e.preventDefault(); // 横で縦スクロール抑止
     let x = swipeState.initialTranslateX + deltaX;
     if (x > 0) x = Math.min(0, x / 4);
     if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
-
     const el = rowRefs.current[swipeState.activeId];
     if (el) el.style.transform = `translateX(${x}px)`;
-  }, [swipeState]);
+  }, [swipeState, swipeEnabled]);
 
   const handleTouchEnd = useCallback(() => {
-    if (!swipeState) return;
+    if (!swipeEnabled || !swipeState) return;
     const el = rowRefs.current[swipeState.activeId];
     if (!el) return;
 
@@ -106,10 +110,11 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     window.removeEventListener("mouseup", handleTouchEnd);
 
     setTimeout(() => { if (el) el.style.transition = "none"; }, 260);
-  }, [swipeState, handleTouchMove]);
+  }, [swipeState, handleTouchMove, swipeEnabled]);
 
   useEffect(() => {
-    if (!swipeState) return;
+    if (!swipeEnabled || !swipeState) return;
+    // 横スワイプ中に preventDefault を効かせる
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
     window.addEventListener("mousemove", handleTouchMove);
@@ -120,10 +125,10 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       window.removeEventListener("mousemove", handleTouchMove);
       window.removeEventListener("mouseup", handleTouchEnd);
     };
-  }, [swipeState, handleTouchMove, handleTouchEnd]);
+  }, [swipeState, handleTouchMove, handleTouchEnd, swipeEnabled]);
 
   const startSwipe = (e, rowId) => {
-
+    if (!swipeEnabled) return; // iOSではスワイプ自体を無効化
     // ハンドル上はスワイプ開始しない（ドラッグ専用）
     if (e.target.closest(`.${styles.swl__handle}`)) return;
     const p = e.touches ? e.touches[0] : e;
@@ -134,7 +139,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     setSwipeState({ startX, activeId: rowId, initialTranslateX: initialX });
   };
 
-  // ====== 削除アニメーション ======
+  // 削除
   function deleteRowSmooth(rowId, idx) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
@@ -144,9 +149,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     }, 300);
   }
 
-  // ====== モーダル ======
-  const [open, setOpen] = useState(false);
-  const [activeRow, setActiveRow] = useState(null);
+  // モーダル
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && setOpen(false);
@@ -158,7 +161,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const closePopup = () => setOpen(false);
 
   return (
-    <>もうわからねーよ馬鹿野郎
+    <>
       <ul className={styles.swl} ref={listRef}>
         {rows.map((row, idx) => {
           const rowId = row.id ?? idx;
@@ -182,13 +185,14 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onMouseDown={(e) => startSwipe(e, rowId)}
               >
                 <div className={styles.swl__grid}>
-                    <button
-                      className={styles.swl__handle}
-                      type="button"
-                      title="ドラッグで並べ替え"
-                      onTouchStart={(e) => { e.preventDefault(); /* iOSでD&Dを最優先 */ }}
-                      onMouseDown={(e) => { e.preventDefault(); /* PCでもドラッグ開始を確実に */ }}
-                    >
+                  {/* ハンドル：ドラッグ優先にするための preventDefault を“ここだけ”入れる */}
+                  <button
+                    className={styles.swl__handle}
+                    type="button"
+                    title="ドラッグで並べ替え"
+                    onTouchStart={(e) => { e.preventDefault(); }}
+                    onMouseDown={(e) => { e.preventDefault(); }}
+                  >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>
 
