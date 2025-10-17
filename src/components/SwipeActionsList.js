@@ -19,18 +19,18 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [swipeState, setSwipeState] = useState(null);
   const [leavingIds, setLeavingIds] = useState([]);
 
-  // ====== 並べ替え（SortableJS） ======
+  // 並べ替え（ハンドル限定 / iOS対応）
   useEffect(() => {
     if (!listRef.current) return;
 
     const sortable = Sortable.create(listRef.current, {
       animation: 150,
-      handle: `.${styles.swl__handle}`, // ← ハンドル限定
+      handle: `.${styles.swl__handle}`,    // ハンドルでのみドラッグ開始
       draggable: `.${styles.swl__row}`,
-      direction: "vertical",            // ← 縦方向のみ
+      direction: "vertical",
       ghostClass: styles.dragging,
 
-      // モバイル・Safari対応
+      // iOS / 非Chrome 安定化
       forceFallback: true,
       fallbackOnBody: true,
       touchStartThreshold: 1,
@@ -39,24 +39,20 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       delay: 0,
       setData: (dt) => { try { dt.setData("text/plain", ""); } catch (_) {} },
 
-      // ハンドル以外ではドラッグ禁止
-      cancel: `.${styles.swl__swipeableContent} *:not(.${styles.swl__handle})`,
-      preventOnFilter: false,
+      // ← ここにあった cancel は削除（ハンドル内のimgタップもドラッグ可にする）
+      // preventOnFilter も不要
 
       onStart() {
-        Object.values(rowRefs.current).forEach((el) => {
-          if (el) el.style.transition = "none";
-        });
+        Object.values(rowRefs.current).forEach((el) => { if (el) el.style.transition = "none"; });
       },
       onEnd: (evt) => {
-        const from = evt.oldIndex;
-        const to = evt.newIndex;
+        const from = evt.oldIndex, to = evt.newIndex;
         if (from === to || from == null || to == null) return;
         setRows((prev) => {
           const next = [...prev];
           const [m] = next.splice(from, 1);
           next.splice(to, 0, m);
-          if (onReorder) onReorder(next);
+          onReorder && onReorder(next);
           return next;
         });
       },
@@ -78,10 +74,12 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     if (!swipeState) return;
     const p = e.touches ? e.touches[0] : e;
     const deltaX = p.clientX - swipeState.startX;
-    if (Math.abs(deltaX) > 10) e.preventDefault(); // 横移動時に縦スクロールを止める
+    if (Math.abs(deltaX) > 10) e.preventDefault(); // 横移動中は縦スクロール抑止
+
     let x = swipeState.initialTranslateX + deltaX;
     if (x > 0) x = Math.min(0, x / 4);
     if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
+
     const el = rowRefs.current[swipeState.activeId];
     if (el) el.style.transform = `translateX(${x}px)`;
   }, [swipeState]);
@@ -90,19 +88,23 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     if (!swipeState) return;
     const el = rowRefs.current[swipeState.activeId];
     if (!el) return;
+
     const currentX = getCurrentX(el);
     const moved = currentX - swipeState.initialTranslateX;
     let finalX = 0;
     if (moved <= -10 || currentX < -THRESHOLD) finalX = -DELETE_WIDTH;
     else if (moved >= 10) finalX = 0;
     else finalX = currentX < -THRESHOLD ? -DELETE_WIDTH : 0;
+
     el.style.transition = "transform .25s ease-out";
     el.style.transform = `translateX(${finalX}px)`;
+
     setSwipeState(null);
     window.removeEventListener("touchmove", handleTouchMove);
     window.removeEventListener("touchend", handleTouchEnd);
     window.removeEventListener("mousemove", handleTouchMove);
     window.removeEventListener("mouseup", handleTouchEnd);
+
     setTimeout(() => { if (el) el.style.transition = "none"; }, 260);
   }, [swipeState, handleTouchMove]);
 
@@ -121,7 +123,8 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   }, [swipeState, handleTouchMove, handleTouchEnd]);
 
   const startSwipe = (e, rowId) => {
-    if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドルではスワイプ禁止
+    // ハンドル上はスワイプ開始しない（ドラッグ専用）
+    if (e.target.closest(`.${styles.swl__handle}`)) return;
     const p = e.touches ? e.touches[0] : e;
     const startX = p.clientX;
     const el = rowRefs.current[rowId];
@@ -135,7 +138,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
       setRows((prev) => prev.filter((_, i) => i !== idx));
-      if (onDelete) onDelete(idx);
+      onDelete && onDelete(idx);
       setLeavingIds((prev) => prev.filter((id) => id !== rowId));
     }, 300);
   }
@@ -198,9 +201,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                         <div className={styles.swl__line}>
                           <span className={`${styles.swl__money} ${styles.em}`}>{row.left}</span>
                           <span className={styles.swl__arrow}>→</span>
-                          <span className={`${styles.swl__money} ${styles.em}`}>
-                            {String(row.right).split("\n")[0]}
-                          </span>
+                          <span className={`${styles.swl__money} ${styles.em}`}>{String(row.right).split("\n")[0]}</span>
                         </div>
                         {row.memo && <p className={styles.swl__memo} title={row.memo}>{row.memo}</p>}
                       </div>
