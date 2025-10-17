@@ -123,6 +123,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   }, [swipeState, handleTouchMove, handleTouchEnd]);
 
   const startSwipe = (e, rowId) => {
+
     // ハンドル上はスワイプ開始しない（ドラッグ専用）
     if (e.target.closest(`.${styles.swl__handle}`)) return;
     const p = e.touches ? e.touches[0] : e;
