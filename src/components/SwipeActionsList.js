@@ -1,3 +1,4 @@
+// src/components/SwipeActionsList.js
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import styles from "./SwipeActionsList.module.css";
 import Sortable from "sortablejs";
@@ -19,32 +20,29 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [swipeState, setSwipeState] = useState(null);
   const [leavingIds, setLeavingIds] = useState([]);
 
-  // ====== Sortable（並べ替え） ======
+  // 並べ替え（ハンドルでのみ開始）
   useEffect(() => {
     if (!listRef.current) return;
 
     const sortable = Sortable.create(listRef.current, {
       animation: 150,
-      handle: `.${styles.swl__handle}`,
-      draggable: `.${styles.swl__row}`,
+      handle: `.${styles.swl__handle}`,    // ← ここを掴んだときだけドラッグ
+      draggable: `.${styles.swl__row}`,    // 並べ替える要素
       ghostClass: styles.dragging,
 
-      // ★ ここが重要：Safari/Firefox/Android WebViewでも安定
+      // モバイル/非Chromeでも安定動作させる
       forceFallback: true,
       fallbackOnBody: true,
       touchStartThreshold: 3,
       fallbackTolerance: 3,
       delayOnTouchOnly: false,
       delay: 0,
-
-      // ★ iOS Safari のDrag要件（HTML5 DnD時に必要。フォールバックでも害なし）
+      // iOS Safari 対策（害なし）
       setData: (dt) => { try { dt.setData("text/plain", ""); } catch (_) {} },
 
       onStart() {
-        // 念のため、スワイプ対象のトランジションをオフ
-        Object.values(rowRefs.current).forEach((el) => {
-          if (el) el.style.transition = "none";
-        });
+        // スワイプ中のtransitionを切る
+        Object.values(rowRefs.current).forEach((el) => { if (el) el.style.transition = "none"; });
       },
       onEnd: (evt) => {
         const from = evt.oldIndex, to = evt.newIndex;
@@ -53,7 +51,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
           const next = [...prev];
           const [m] = next.splice(from, 1);
           next.splice(to, 0, m);
-          onReorder?.(next);
+          onReorder && onReorder(next);
           return next;
         });
       },
@@ -65,9 +63,9 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   // ====== スワイプ（削除ボタン露出） ======
   const getCurrentX = (el) => {
     if (!el) return 0;
-    const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform);
+    const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform || "");
     if (m) return parseFloat(m[1]);
-    const num = parseFloat(el.style.transform.replace(/[^0-9-.]/g, ""));
+    const num = parseFloat((el.style.transform || "").replace(/[^0-9-.]/g, ""));
     return isNaN(num) ? 0 : num;
   };
 
@@ -76,7 +74,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     const p = e.touches ? e.touches[0] : e;
     const deltaX = p.clientX - swipeState.startX;
 
-    // 横に十分動いたら縦スクロールを抑止（モバイルで必須）
+    // 横に十分動いたら縦スクロールを抑止
     if (Math.abs(deltaX) > 10) e.preventDefault();
 
     let x = swipeState.initialTranslateX + deltaX;
@@ -113,7 +111,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   useEffect(() => {
     if (!swipeState) return;
-    // ★ passive:false で preventDefault を有効化
+    // 横スワイプ中に preventDefault を効かせる
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
     window.addEventListener("mousemove", handleTouchMove);
@@ -142,7 +140,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
       setRows((prev) => prev.filter((_, i) => i !== idx));
-      onDelete?.(idx);
+      onDelete && onDelete(idx);
       setLeavingIds((prev) => prev.filter((id) => id !== rowId));
     }, 300);
   }
@@ -161,7 +159,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const closePopup = () => setOpen(false);
 
   return (
-    <>
+    <>っｖｘｚｃ
       <ul className={styles.swl} ref={listRef}>
         {rows.map((row, idx) => {
           const rowId = row.id ?? idx;
@@ -189,7 +187,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                     className={styles.swl__handle}
                     type="button"
                     title="ドラッグで並べ替え"
-                    // ← 以前ここにあった preventDefault は削除（ドラッグ殺しの元）
+                    // ※ e.preventDefault() は置かない（DnD開始を殺す原因）
                   >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>
