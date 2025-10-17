@@ -1,4 +1,3 @@
-// src/components/SwipeActionsList.js
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import styles from "./SwipeActionsList.module.css";
 import Sortable from "sortablejs";
@@ -20,38 +19,44 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [swipeState, setSwipeState] = useState(null);
   const [leavingIds, setLeavingIds] = useState([]);
 
-  // 並べ替え（ハンドルでのみ開始）
+  // ====== 並べ替え（SortableJS） ======
   useEffect(() => {
     if (!listRef.current) return;
 
     const sortable = Sortable.create(listRef.current, {
       animation: 150,
-      handle: `.${styles.swl__handle}`,    // ← ここを掴んだときだけドラッグ
-      draggable: `.${styles.swl__row}`,    // 並べ替える要素
+      handle: `.${styles.swl__handle}`, // ← ハンドル限定
+      draggable: `.${styles.swl__row}`,
+      direction: "vertical",            // ← 縦方向のみ
       ghostClass: styles.dragging,
 
-      // モバイル/非Chromeでも安定動作させる
+      // モバイル・Safari対応
       forceFallback: true,
       fallbackOnBody: true,
-      touchStartThreshold: 3,
-      fallbackTolerance: 3,
+      touchStartThreshold: 1,
+      fallbackTolerance: 2,
       delayOnTouchOnly: false,
       delay: 0,
-      // iOS Safari 対策（害なし）
       setData: (dt) => { try { dt.setData("text/plain", ""); } catch (_) {} },
 
+      // ハンドル以外ではドラッグ禁止
+      cancel: `.${styles.swl__swipeableContent} *:not(.${styles.swl__handle})`,
+      preventOnFilter: false,
+
       onStart() {
-        // スワイプ中のtransitionを切る
-        Object.values(rowRefs.current).forEach((el) => { if (el) el.style.transition = "none"; });
+        Object.values(rowRefs.current).forEach((el) => {
+          if (el) el.style.transition = "none";
+        });
       },
       onEnd: (evt) => {
-        const from = evt.oldIndex, to = evt.newIndex;
+        const from = evt.oldIndex;
+        const to = evt.newIndex;
         if (from === to || from == null || to == null) return;
         setRows((prev) => {
           const next = [...prev];
           const [m] = next.splice(from, 1);
           next.splice(to, 0, m);
-          onReorder && onReorder(next);
+          if (onReorder) onReorder(next);
           return next;
         });
       },
@@ -60,7 +65,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     return () => sortable.destroy();
   }, [onReorder]);
 
-  // ====== スワイプ（削除ボタン露出） ======
+  // ====== スワイプ（削除ボタン表示） ======
   const getCurrentX = (el) => {
     if (!el) return 0;
     const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform || "");
@@ -73,14 +78,10 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     if (!swipeState) return;
     const p = e.touches ? e.touches[0] : e;
     const deltaX = p.clientX - swipeState.startX;
-
-    // 横に十分動いたら縦スクロールを抑止
-    if (Math.abs(deltaX) > 10) e.preventDefault();
-
+    if (Math.abs(deltaX) > 10) e.preventDefault(); // 横移動時に縦スクロールを止める
     let x = swipeState.initialTranslateX + deltaX;
     if (x > 0) x = Math.min(0, x / 4);
     if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
-
     const el = rowRefs.current[swipeState.activeId];
     if (el) el.style.transform = `translateX(${x}px)`;
   }, [swipeState]);
@@ -89,29 +90,24 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     if (!swipeState) return;
     const el = rowRefs.current[swipeState.activeId];
     if (!el) return;
-
     const currentX = getCurrentX(el);
     const moved = currentX - swipeState.initialTranslateX;
     let finalX = 0;
     if (moved <= -10 || currentX < -THRESHOLD) finalX = -DELETE_WIDTH;
     else if (moved >= 10) finalX = 0;
     else finalX = currentX < -THRESHOLD ? -DELETE_WIDTH : 0;
-
     el.style.transition = "transform .25s ease-out";
     el.style.transform = `translateX(${finalX}px)`;
-
     setSwipeState(null);
     window.removeEventListener("touchmove", handleTouchMove);
     window.removeEventListener("touchend", handleTouchEnd);
     window.removeEventListener("mousemove", handleTouchMove);
     window.removeEventListener("mouseup", handleTouchEnd);
-
     setTimeout(() => { if (el) el.style.transition = "none"; }, 260);
   }, [swipeState, handleTouchMove]);
 
   useEffect(() => {
     if (!swipeState) return;
-    // 横スワイプ中に preventDefault を効かせる
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
     window.addEventListener("mousemove", handleTouchMove);
@@ -125,8 +121,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   }, [swipeState, handleTouchMove, handleTouchEnd]);
 
   const startSwipe = (e, rowId) => {
-    // ハンドル上はスワイプ開始しない（ドラッグ専用）
-    if (e.target.closest(`.${styles.swl__handle}`)) return;
+    if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドルではスワイプ禁止
     const p = e.touches ? e.touches[0] : e;
     const startX = p.clientX;
     const el = rowRefs.current[rowId];
@@ -140,7 +135,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
       setRows((prev) => prev.filter((_, i) => i !== idx));
-      onDelete && onDelete(idx);
+      if (onDelete) onDelete(idx);
       setLeavingIds((prev) => prev.filter((id) => id !== rowId));
     }, 300);
   }
@@ -159,7 +154,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const closePopup = () => setOpen(false);
 
   return (
-    <>っｖｘｚｃ
+    <>
       <ul className={styles.swl} ref={listRef}>
         {rows.map((row, idx) => {
           const rowId = row.id ?? idx;
@@ -187,7 +182,6 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                     className={styles.swl__handle}
                     type="button"
                     title="ドラッグで並べ替え"
-                    // ※ e.preventDefault() は置かない（DnD開始を殺す原因）
                   >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>
@@ -204,7 +198,9 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                         <div className={styles.swl__line}>
                           <span className={`${styles.swl__money} ${styles.em}`}>{row.left}</span>
                           <span className={styles.swl__arrow}>→</span>
-                          <span className={`${styles.swl__money} ${styles.em}`}>{String(row.right).split("\n")[0]}</span>
+                          <span className={`${styles.swl__money} ${styles.em}`}>
+                            {String(row.right).split("\n")[0]}
+                          </span>
                         </div>
                         {row.memo && <p className={styles.swl__memo} title={row.memo}>{row.memo}</p>}
                       </div>
