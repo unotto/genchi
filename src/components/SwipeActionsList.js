@@ -1,3 +1,4 @@
+// src/components/SwipeActionsList.js
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./SwipeActionsList.module.css";
 import Sortable from "sortablejs";
@@ -17,11 +18,15 @@ const isTouchDevice =
    (window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
 
 export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
+  // 表示用ローカル状態
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
 
+  // 最新 rows / onReorder を参照する ref
   const rowsRef = useRef(items);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
+  const onReorderRef = useRef(onReorder);
+  useEffect(() => { onReorderRef.current = onReorder; }, [onReorder]);
 
   const listRef = useRef(null);
   const sortableRef = useRef(null);
@@ -32,7 +37,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [open, setOpen] = useState(false);
   const [activeRow, setActiveRow] = useState(null);
 
-  // ===== Sortable：iOS/Androidだけ forceFallback、PC はネイティブDnD =====
+  // ========== Sortable（初期化は1回だけ） ==========
   useEffect(() => {
     if (!listRef.current) return;
 
@@ -43,23 +48,28 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       direction: "vertical",
       ghostClass: styles.dragging,
 
-      forceFallback: isTouchDevice,          // ← ここをデバイスで分岐
+      // モバイルは常にフォールバックDnD（iOS安定）
+      forceFallback: isTouchDevice,
       fallbackOnBody: true,
       touchStartThreshold: 1,
       fallbackTolerance: 2,
       delayOnTouchOnly: false,
       delay: 0,
+
+      // iOSのHTML5DnD対策
       setData: (dt) => { try { dt.setData("text/plain", ""); } catch (_) {} },
 
       onStart() {
         console.log("[genchi] sortable onStart");
         Object.values(rowRefs.current).forEach((el) => { if (el) el.style.transition = "none"; });
       },
+
       onEnd: (evt) => {
-        console.log("[genchi] sortable onEnd", {from: evt.oldIndex, to: evt.newIndex});
         const from = evt.oldIndex, to = evt.newIndex;
+        console.log("[genchi] sortable onEnd", { from, to });
         if (from === to || from == null || to == null) return;
 
+        // ローカル表示は即時更新
         setRows((prev) => {
           const optimistic = [...prev];
           const [m] = optimistic.splice(from, 1);
@@ -67,19 +77,22 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
           return optimistic;
         });
 
+        // 親への通知は次フレーム。onReorderはref経由で常に最新を呼ぶ
         const base = [...rowsRef.current];
         const [m] = base.splice(from, 1);
         base.splice(to, 0, m);
-        requestAnimationFrame(() => { onReorder && onReorder(base); });
+        requestAnimationFrame(() => {
+          onReorderRef.current && onReorderRef.current(base);
+        });
       },
     });
 
     sortableRef.current = sortable;
     console.log("[genchi] sortable ready (forceFallback:", isTouchDevice, ")");
     return () => { try { sortable.destroy(); } catch(e){} };
-  }, [onReorder]);
+  }, []); // ← 依存空。初期化は1回だけ
 
-  // ===== スワイプ（Pointer Events + Touch fallback）=====
+  // ========== スワイプ（PE優先 + Touchフォールバック） ==========
   const getCurrentX = (el) => {
     if (!el) return 0;
     const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform || "");
@@ -87,14 +100,16 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     const num = parseFloat((el.style.transform || "").replace(/[^0-9-.]/g, ""));
     return isNaN(num) ? 0 : num;
   };
+
   const beginSwipe = (activeId, startX, startY) => {
-    console.log("[genchi] swipe begin", {activeId, startX, startY});
+    console.log("[genchi] swipe begin", { activeId, startX, startY });
     const el = rowRefs.current[activeId];
     const initialX = el ? getCurrentX(el) : 0;
     if (el) el.style.transition = "none";
     swipeRef.current = { activeId, startX, startY, initialX, locked: false, mode: null };
     try { sortableRef.current?.option("disabled", true); } catch {}
   };
+
   const updateSwipeX = (dx) => {
     const s = swipeRef.current; if (!s) return;
     const el = rowRefs.current[s.activeId]; if (!el) return;
@@ -103,6 +118,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
     el.style.transform = `translateX(${x}px)`;
   };
+
   const endSwipe = () => {
     const s = swipeRef.current; if (!s) return;
     console.log("[genchi] swipe end");
@@ -124,7 +140,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   // Pointer Events
   const onPointerDown = (e, rowId) => {
-    if (e.target.closest(`.${styles.swl__handle}`)) return;
+    if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドルはドラッグ専用
     e.currentTarget.setPointerCapture?.(e.pointerId);
     console.log("[genchi] PE down");
     beginSwipe(rowId, e.clientX, e.clientY);
@@ -140,17 +156,16 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
       console.log("[genchi] PE lock", s.mode);
     }
-    if (s.mode !== "horizontal") return;
+    if (s.mode !== "horizontal") return; // 縦はスクロール優先
     updateSwipeX(dx);
   };
   const onPointerUpOrCancel = (e) => {
-    const s = swipeRef.current;
-    if (!s) return;
+    const s = swipeRef.current; if (!s) return;
     e.currentTarget.releasePointerCapture?.(e.pointerId);
     endSwipe();
   };
 
-  // Touch fallback（Pointer未対応ブラウザ向け）
+  // Touch fallback
   const onTouchStart = (e, rowId) => {
     if (e.target.closest(`.${styles.swl__handle}`)) return;
     const t = e.touches[0]; if (!t) return;
@@ -174,7 +189,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   };
   const onTouchEnd = () => { endSwipe(); };
 
-  // ===== 削除アニメ =====
+  // ========== 削除アニメ ==========
   function deleteRowSmooth(rowId, idx) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
@@ -214,8 +229,14 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onTouchEnd={(e) => !window.PointerEvent && onTouchEnd(e)}
               >
                 <div className={styles.swl__grid}>
-                  <button className={styles.swl__handle} type="button" title="ドラッグで並べ替え">
-                    <img src={dots} alt="" aria-hidden="true" />
+                  {/* ハンドル（buttonのまま。ただしdraggable無効化） */}
+                  <button
+                    className={styles.swl__handle}
+                    type="button"
+                    title="ドラッグで並べ替え"
+                    draggable="false"
+                  >
+                    <img src={dots} alt="" aria-hidden="true" draggable="false" />
                   </button>
 
                   <div className={styles.swl__body}>
