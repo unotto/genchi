@@ -85,11 +85,9 @@
   position: relative;
   z-index: 2; /* 削除ボタンの上に配置 */
   background: var(--card); /* 背景を白にして削除ボタンを覆い隠す */
+  touch-action: pan-y;
   will-change: transform; /* アニメーションパフォーマンスのヒント */
   cursor: grab;
-  /* 追加：縦スクロールは許可しつつ、横方向はJS制御に任せる */
-  touch-action: pan-y;
-  /* transitionはJSで一時的に適用/解除されます */
 }
 
 /* 横並び：ハンドル / 本文 / 右端ヒント */ 
@@ -123,7 +121,8 @@
 
 /* 追加：ハンドル画像はイベントを透過（親ボタンに命中させる） */
 .swl__handle img {
-  width:10px !important; 
+    width:10px !important; 
+  height:auto; 
   pointer-events: none;
   -webkit-user-drag: none;
 }
