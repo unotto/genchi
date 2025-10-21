@@ -122,12 +122,12 @@
 .swl__handle:active { cursor: grabbing; }
 
 /* 追加：ハンドル画像はイベントを透過（親ボタンに命中させる） */
-.swl__handle img{ 
+.swl__handle img {
   width:10px !important; 
-  height:auto; 
   pointer-events: none;
   -webkit-user-drag: none;
-} 
+}
+
 
 /* 本文 */ 
 .swl__body{ padding:10px 0; min-width:0; } 
