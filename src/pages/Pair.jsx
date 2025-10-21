@@ -6,10 +6,9 @@ import { loadHistory, saveHistory } from "../lib/history";
 // 安定ID付与（id が無い行にだけ付与）
 function withStableIds(arr) {
   return (arr || []).map((row, i) => {
-<div style={{position:'sticky',top:0,zIndex:9999,background:'#111',color:'#0f0',padding:'6px 10px',fontSize:12}}>
-  PAIR-VERSION: 20251018-TEST
+    <div style={{position:'sticky',top:0,zIndex:9999,background:'#111',color:'#0f0',padding:'6px 10px',fontSize:12}}>
+  PAIR-VERSION: 20251018-PE+TOUCH-FALLBACK
 </div>
-
 
     if (row && row.id != null) return row;
     // 既存の2項目からハッシュっぽいものを作る（衝突しても idx をサフィックス）
@@ -25,6 +24,7 @@ export default function Pair() {
   useEffect(() => {
     const init = withStableIds(loadHistory());
     setItems(init);
+    console.log('[PAIR] 20251018-PE+TOUCH-FALLBACK'); 
   }, []);
 
   const handleDelete = (rowOrIndex) => {

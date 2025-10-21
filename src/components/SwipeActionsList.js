@@ -22,8 +22,10 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   const listRef = useRef(null);
   const sortableRef = useRef(null);
-  const rowRefs = useRef({});          // 各行の swipeableContent への参照
-  const swipeRef = useRef(null);       // Pointer Events 用のスワイプ状態
+  const rowRefs = useRef({});     // 各行の swipeableContent への参照
+
+  // スワイプ状態（Pointer/Touch 両対応）
+  const swipeRef = useRef(null);
 
   const [leavingIds, setLeavingIds] = useState([]); // 削除アニメ
   const [open, setOpen] = useState(false);          // モーダル
@@ -56,7 +58,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
         const from = evt.oldIndex, to = evt.newIndex;
         if (from === to || from == null || to == null) return;
 
-        // ローカル表示は即時更新（体感を良くする）
+        // ローカル表示は即時更新（体感向上）
         setRows((prev) => {
           const optimistic = [...prev];
           const [m] = optimistic.splice(from, 1);
@@ -64,21 +66,20 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
           return optimistic;
         });
 
-        // 親（Pair）への反映は“次フレーム”に遅延して、setState-in-render 警告を回避
+        // 親（Pair）更新は次フレームに遅延（setState-in-render回避）
         const base = [...rowsRef.current];
         const [m] = base.splice(from, 1);
         base.splice(to, 0, m);
-        requestAnimationFrame(() => {
-          onReorder && onReorder(base);
-        });
+        requestAnimationFrame(() => { onReorder && onReorder(base); });
       },
     });
 
     sortableRef.current = sortable;
+    console.log("[genchi] sortable ready");
     return () => { try { sortable.destroy(); } catch(e){} };
   }, [onReorder]);
 
-  // ===== Pointer Events：横スワイプ（preventDefault 不要）=====
+  // ===== 共通ユーティリティ =====
   const getCurrentX = (el) => {
     if (!el) return 0;
     const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform || "");
@@ -86,63 +87,23 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     const num = parseFloat((el.style.transform || "").replace(/[^0-9-.]/g, ""));
     return isNaN(num) ? 0 : num;
   };
-
-  const onPointerDown = (e, rowId) => {
-    // ハンドル上はスワイプ開始しない（ドラッグ専用）
-    if (e.target.closest(`.${styles.swl__handle}`)) return;
-
-    const el = rowRefs.current[rowId];
-    if (!el) return;
-
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const initialX = getCurrentX(el);
-    el.style.transition = "none";
-
-    swipeRef.current = {
-      pointerId: e.pointerId,
-      activeId: rowId,
-      startX,
-      startY,
-      initialX,
-      locked: false,
-      mode: null, // "horizontal" | "vertical"
-    };
-
-    // スワイプ中は並び替えを無効化（競合排除）
+  const beginSwipe = (activeId, startX, startY) => {
+    const el = rowRefs.current[activeId];
+    const initialX = el ? getCurrentX(el) : 0;
+    if (el) el.style.transition = "none";
+    swipeRef.current = { activeId, startX, startY, initialX, locked: false, mode: null };
     try { sortableRef.current?.option("disabled", true); } catch {}
   };
-
-  const onPointerMove = (e) => {
-    const s = swipeRef.current;
-    if (!s || e.pointerId !== s.pointerId) return;
-
-    const dx = e.clientX - s.startX;
-    const dy = e.clientY - s.startY;
-
-    if (!s.locked) {
-      const moved = Math.abs(dx) > 8 || Math.abs(dy) > 8;
-      if (!moved) return;
-      s.locked = true;
-      s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
-    }
-
-    if (s.mode !== "horizontal") return; // 縦はスクロール優先
-
+  const updateSwipeX = (dx) => {
+    const s = swipeRef.current; if (!s) return;
+    const el = rowRefs.current[s.activeId]; if (!el) return;
     let x = s.initialX + dx;
     if (x > 0) x = Math.min(0, x / 4);
     if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
-
-    const el = rowRefs.current[s.activeId];
-    if (el) el.style.transform = `translateX(${x}px)`;
+    el.style.transform = `translateX(${x}px)`;
   };
-
-  const onPointerUpOrCancel = (e) => {
-    const s = swipeRef.current;
-    if (!s || e.pointerId !== s.pointerId) return;
-
+  const endSwipe = () => {
+    const s = swipeRef.current; if (!s) return;
     const el = rowRefs.current[s.activeId];
     if (el) {
       const currentX = getCurrentX(el);
@@ -156,12 +117,58 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       el.style.transform = `translateX(${finalX}px)`;
       setTimeout(() => { if (el) el.style.transition = "none"; }, 260);
     }
-
     try { sortableRef.current?.option("disabled", false); } catch {}
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-
     swipeRef.current = null;
   };
+
+  // ===== Pointer Events（あれば優先）=====
+  const onPointerDown = (e, rowId) => {
+    if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドルはドラッグ専用
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    beginSwipe(rowId, e.clientX, e.clientY);
+  };
+  const onPointerMove = (e) => {
+    const s = swipeRef.current; if (!s) return;
+    const dx = e.clientX - s.startX;
+    const dy = e.clientY - s.startY;
+    if (!s.locked) {
+      const moved = Math.abs(dx) > 8 || Math.abs(dy) > 8;
+      if (!moved) return;
+      s.locked = true;
+      s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+    }
+    if (s.mode !== "horizontal") return; // 縦はスクロール優先
+    updateSwipeX(dx);
+  };
+  const onPointerUpOrCancel = (e) => {
+    const s = swipeRef.current;
+    if (!s) return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    endSwipe();
+  };
+
+  // ===== Touch フォールバック（PointerEventsが無い環境も拾う）=====
+  const onTouchStart = (e, rowId) => {
+    if (e.target.closest(`.${styles.swl__handle}`)) return;
+    const t = e.touches[0]; if (!t) return;
+    beginSwipe(rowId, t.clientX, t.clientY);
+  };
+  const onTouchMove = (e) => {
+    const s = swipeRef.current; if (!s) return;
+    const t = e.touches[0]; if (!t) return;
+    const dx = t.clientX - s.startX;
+    const dy = t.clientY - s.startY;
+    if (!s.locked) {
+      const moved = Math.abs(dx) > 8 || Math.abs(dy) > 8;
+      if (!moved) return;
+      s.locked = true;
+      s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+    }
+    if (s.mode !== "horizontal") return;
+    // touch-action: pan-y が効いていれば preventDefault 不要
+    updateSwipeX(dx);
+  };
+  const onTouchEnd = () => { endSwipe(); };
 
   // ===== 削除（アニメーション）=====
   function deleteRowSmooth(rowId, idx) {
@@ -199,10 +206,15 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
               <div
                 className={styles.swl__swipeableContent}
                 ref={(el) => (rowRefs.current[rowId] = el)}
-                onPointerDown={(e) => onPointerDown(e, rowId)}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerUpOrCancel}
-                onPointerCancel={onPointerUpOrCancel}
+                // Pointer Events
+                onPointerDown={(e) => window.PointerEvent && onPointerDown(e, rowId)}
+                onPointerMove={(e) => window.PointerEvent && onPointerMove(e)}
+                onPointerUp={(e) => window.PointerEvent && onPointerUpOrCancel(e)}
+                onPointerCancel={(e) => window.PointerEvent && onPointerUpOrCancel(e)}
+                // Touch fallback
+                onTouchStart={(e) => !window.PointerEvent && onTouchStart(e, rowId)}
+                onTouchMove={(e) => !window.PointerEvent && onTouchMove(e)}
+                onTouchEnd={(e) => !window.PointerEvent && onTouchEnd(e)}
               >
                 <div className={styles.swl__grid}>
                   {/* ハンドル（ドラッグ専用） */}
