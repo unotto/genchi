@@ -1,4 +1,3 @@
-// src/components/SwipeActionsList.js
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./SwipeActionsList.module.css";
 import Sortable from "sortablejs";
@@ -24,7 +23,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const sortableRef = useRef(null);
   const rowRefs = useRef({});     // 各行の swipeableContent への参照
 
-  // スワイプ状態（Pointer/Touch 両対応）
+  // スワイプ状態（Pointer Events）
   const swipeRef = useRef(null);
 
   const [leavingIds, setLeavingIds] = useState([]); // 削除アニメ
@@ -48,6 +47,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       fallbackTolerance: 2,
       delayOnTouchOnly: false,
       delay: 0,
+      // iOS Safari 対策（HTML5 DnD setData 必須）
       setData: (dt) => { try { dt.setData("text/plain", ""); } catch (_) {} },
 
       onStart() {
@@ -112,7 +112,6 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       if (moved <= -10 || currentX < -THRESHOLD) finalX = -DELETE_WIDTH;
       else if (moved >= 10) finalX = 0;
       else finalX = currentX < -THRESHOLD ? -DELETE_WIDTH : 0;
-
       el.style.transition = "transform .25s ease-out";
       el.style.transform = `translateX(${finalX}px)`;
       setTimeout(() => { if (el) el.style.transition = "none"; }, 260);
@@ -121,7 +120,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     swipeRef.current = null;
   };
 
-  // ===== Pointer Events（あれば優先）=====
+  // ===== Pointer Events（優先）=====
   const onPointerDown = (e, rowId) => {
     if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドルはドラッグ専用
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -147,7 +146,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     endSwipe();
   };
 
-  // ===== Touch フォールバック（PointerEventsが無い環境も拾う）=====
+  // ===== Touch フォールバック（念のため）=====
   const onTouchStart = (e, rowId) => {
     if (e.target.closest(`.${styles.swl__handle}`)) return;
     const t = e.touches[0]; if (!t) return;
@@ -165,7 +164,6 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
     }
     if (s.mode !== "horizontal") return;
-    // touch-action: pan-y が効いていれば preventDefault 不要
     updateSwipeX(dx);
   };
   const onTouchEnd = () => { endSwipe(); };
@@ -217,7 +215,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onTouchEnd={(e) => !window.PointerEvent && onTouchEnd(e)}
               >
                 <div className={styles.swl__grid}>
-                  {/* ハンドル（ドラッグ専用） */}
+                  {/* ★ ハンドルは button のまま（ローカルで動いていた形に戻す） */}
                   <button
                     className={styles.swl__handle}
                     type="button"
