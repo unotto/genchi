@@ -169,6 +169,10 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   return (
     <>
+    <div style={{position:'sticky',top:0,zIndex:9999,background:'#111',color:'#0f0',padding:'6px 10px',fontSize:12}}>
+  PAIR-VERSION: 20251018-TEST
+</div>
+
       <ul className={styles.swl} ref={listRef}>
         {rows.map((row, idx) => {
           const rowId = row.id ?? idx;
