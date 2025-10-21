@@ -18,24 +18,24 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const sortableRef = useRef(null);
   const rowRefs = useRef({});
 
-  // 横スワイプ状態（Pointer Events 版）
-  // activeId: 行ID, startX/startY, initialX: 初期translateX, locked/mode: 方向ロック
+  // Pointer Events 用スワイプ状態
   const swipeRef = useRef(null);
 
   const [leavingIds, setLeavingIds] = useState([]);
   const [open, setOpen] = useState(false);
   const [activeRow, setActiveRow] = useState(null);
 
-  // ===== Sortable（ハンドル限定 / 縦方向 / フォールバック）=====
+  // ===== Sortable（ハンドル限定 / 縦 / フォールバック強制）=====
   useEffect(() => {
     if (!listRef.current) return;
 
     const sortable = Sortable.create(listRef.current, {
       animation: 150,
-      handle: `.${styles.swl__handle}`,
+      handle: `.${styles.swl__handle}`,   // ← ドットの領域を掴む
       draggable: `.${styles.swl__row}`,
       direction: "vertical",
       ghostClass: styles.dragging,
+
       forceFallback: true,
       fallbackOnBody: true,
       touchStartThreshold: 1,
@@ -65,7 +65,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     return () => { try { sortable.destroy(); } catch(e){} };
   }, [onReorder]);
 
-  // ===== Pointer Events: 横スワイプ（preventDefault 不要）=====
+  // ===== Pointer Events：横スワイプ（preventDefault 不要）=====
   const getCurrentX = (el) => {
     if (!el) return 0;
     const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform || "");
@@ -81,7 +81,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     const el = rowRefs.current[rowId];
     if (!el) return;
 
-    // この要素にポインタキャプチャ（以降のmove/upを確実にこの要素で受ける）
+    // Pointer capture（move/upを確実に取る）
     e.currentTarget.setPointerCapture?.(e.pointerId);
 
     const startX = e.clientX;
@@ -99,7 +99,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       mode: null, // "horizontal" | "vertical"
     };
 
-    // スワイプ中は並び替えを無効化（競合排除）
+    // スワイプ中は並び替え無効（競合回避）
     try { sortableRef.current?.option("disabled", true); } catch {}
   };
 
@@ -111,17 +111,13 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     const dy = e.clientY - s.startY;
 
     if (!s.locked) {
-      const movedEnough = Math.abs(dx) > 8 || Math.abs(dy) > 8;
-      if (!movedEnough) return;
-      const mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+      const moved = Math.abs(dx) > 8 || Math.abs(dy) > 8;
+      if (!moved) return;
       s.locked = true;
-      s.mode = mode;
+      s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
     }
 
-    if (s.mode !== "horizontal") {
-      // 縦スクロール優先（Pointer Events では preventDefault 不要）
-      return;
-    }
+    if (s.mode !== "horizontal") return; // 縦は放置（スクロール優先）
 
     let x = s.initialX + dx;
     if (x > 0) x = Math.min(0, x / 4);
@@ -157,7 +153,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     swipeRef.current = null;
   };
 
-  // 削除アニメーション
+  // 削除アニメ
   function deleteRowSmooth(rowId, idx) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
@@ -168,13 +164,6 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   }
 
   // モーダル
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
   const openPopup = (row) => { setActiveRow(row); setOpen(true); };
   const closePopup = () => setOpen(false);
 
@@ -187,6 +176,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
             <li
               className={`${styles.swl__row} ${leavingIds.includes(rowId) ? styles.isLeaving : ""}`}
               key={rowId}
+              data-id={rowId}
             >
               <button
                 className={styles.swl__deleteAction}
@@ -205,12 +195,11 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onPointerCancel={onPointerUpOrCancel}
               >
                 <div className={styles.swl__grid}>
-                  {/* ハンドル：ドラッグを最優先にする（クリック抑止） */}
+                  {/* ハンドル：preventDefault を外す（Sortable の開始を殺さない） */}
                   <button
                     className={styles.swl__handle}
                     type="button"
                     title="ドラッグで並べ替え"
-                    onPointerDown={(e) => { e.preventDefault?.(); }}
                   >
                     <img src={dots} alt="" aria-hidden="true" />
                   </button>

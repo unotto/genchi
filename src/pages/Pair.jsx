@@ -3,21 +3,26 @@ import Current from "../components/ui/Current";
 import SwipeActionsList from "../components/SwipeActionsList";
 import { loadHistory, saveHistory } from "../lib/history";
 
-/**
- * ペア履歴ページ：
- * - localStorage の履歴を読み込んで SwipeActionsList に表示
- * - SwipeActionsList 側で削除/並べ替えしたら保存
- */
+// 安定ID付与（id が無い行にだけ付与）
+function withStableIds(arr) {
+  return (arr || []).map((row, i) => {
+    if (row && row.id != null) return row;
+    // 既存の2項目からハッシュっぽいものを作る（衝突しても idx をサフィックス）
+    const seed = `${row?.date || ""}|${row?.left || ""}|${row?.right || ""}|${row?.memo || ""}`;
+    const h = Array.from(seed).reduce((s, c) => ((s << 5) - s) + c.charCodeAt(0) | 0, 0);
+    return { ...row, id: `${h}_${i}` };
+  });
+}
+
 export default function Pair() {
   const [items, setItems] = useState([]);
 
   useEffect(() => {
-    setItems(loadHistory());
+    const init = withStableIds(loadHistory());
+    setItems(init);
   }, []);
 
   const handleDelete = (rowOrIndex) => {
-    // SwipeActionsList の実装次第で渡ってくる形が違うので両対応:
-    // row: {id, ...} or index
     setItems((prev) => {
       let next = [];
       if (typeof rowOrIndex === "number") {
@@ -33,8 +38,10 @@ export default function Pair() {
   };
 
   const handleReorder = (next) => {
-    setItems(next);
-    saveHistory(next);
+    // next は SwipeActionsList が返す新しい並び
+    const normalized = withStableIds(next); // 念のため
+    setItems(normalized);
+    saveHistory(normalized);
   };
 
   return (
