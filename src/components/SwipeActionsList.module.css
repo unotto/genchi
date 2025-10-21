@@ -41,6 +41,7 @@
 } 
 
 .swl__row::before{ 
+  pointer-events: none;
   content:""; 
   position:absolute; 
   left:0; top:0; bottom:0; 
@@ -102,6 +103,8 @@
 
 /* 左ハンドル（見た目そのまま＋挙動系だけ追加） */ 
 .swl__handle{ 
+  position: relative;
+  z-index: 3;
   display:grid; 
   place-items:center; 
   padding:10px 2px 10px 0; 
