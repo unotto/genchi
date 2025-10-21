@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styles from "./SwipeActionsList.module.css";
 
 import dots from "../img/dot.webp";
@@ -19,13 +19,16 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   // 表示用
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
-
   const rowsRef = useRef(rows);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
 
   const listRef = useRef(null);
-  const rowRefs = useRef({});          // 各行の swipeableContent DIV
+  const liRefs = useRef({});           // 各 <li> の参照（FLIP用）
+  const rowRefs = useRef({});          // 各行の swipeableContent （横スワイプ用）
   const [leavingIds, setLeavingIds] = useState([]);
+
+  // ★ ドラッグ中の行ID（見た目用）
+  const [draggingId, setDraggingId] = useState(null);
 
   // ====== 横スワイプ（削除ボタン） ======
   const swipeRef = useRef(null); // { activeId, startX, startY, initialX, locked, mode }
@@ -71,41 +74,99 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     swipeRef.current = null;
   };
 
-  // ====== 上下ドラッグ入れ替え（ハンドル限定・純JS） ======
+  // ====== 上下ドラッグ入れ替え（ハンドル限定・純JS＋FLIP） ======
   const dragRef = useRef(null); // { id, startY, lastY, index }
   const indexById = (id) => rowsRef.current.findIndex((r, i) => (r.id ?? i) === id);
 
+  // ★ FLIP: 変更前の各liのtopを記録
+  const prevTopsRef = useRef(new Map());
+  useLayoutEffect(() => {
+    const map = new Map();
+    const rowsNow = rowsRef.current;
+    rowsNow.forEach((r, i) => {
+      const id = r.id ?? i;
+      const el = liRefs.current[id];
+      if (el) map.set(id, el.getBoundingClientRect().top);
+    });
+    prevTopsRef.current = map;
+  }, []); // 初回
+
+  const measureAndAnimate = () => {
+    const prev = prevTopsRef.current;
+    if (!prev) return;
+    const map = new Map();
+
+    rowsRef.current.forEach((r, i) => {
+      const id = r.id ?? i;
+      const el = liRefs.current[id];
+      if (!el) return;
+      const to = el.getBoundingClientRect().top;
+      map.set(id, to);
+      const from = prev.get(id);
+      if (from != null) {
+        const dy = from - to;
+        if (Math.abs(dy) > 0.5) {
+          // FLIP：一旦差分を与えてから0へアニメ
+          el.style.transition = "none";
+          el.style.transform = `translateY(${dy}px)`;
+          // リフロー
+          el.offsetHeight; // eslint-disable-line no-unused-expressions
+          el.style.transition = "transform .18s ease";
+          el.style.transform = "translateY(0)";
+          const clear = () => {
+            el.style.transition = "";
+            el.removeEventListener("transitionend", clear);
+          };
+          el.addEventListener("transitionend", clear);
+        }
+      }
+    });
+
+    prevTopsRef.current = map;
+  };
+
   const swapByIndex = (from, to) => {
     if (from === to || from < 0 || to < 0) return;
+
+    // ★ 入れ替え前に全項目のtopを記録
+    const before = new Map();
+    rowsRef.current.forEach((r, i) => {
+      const id = r.id ?? i;
+      const el = liRefs.current[id];
+      if (el) before.set(id, el.getBoundingClientRect().top);
+    });
+    prevTopsRef.current = before;
+
     setRows((prev) => {
       const next = [...prev];
       const [m] = next.splice(from, 1);
       next.splice(to, 0, m);
       return next;
     });
+
+    // setRows後のDOM反映タイミングでFLIP
+    requestAnimationFrame(measureAndAnimate);
   };
 
   const finishDragCommit = () => {
+    setDraggingId(null);
     const finalRows = rowsRef.current;
     onReorder && onReorder(finalRows);
   };
 
   const handleHandlePointerDown = (e, rowId) => {
-    // 既定のテキスト選択などを抑制
     e.preventDefault?.();
+    setDraggingId(rowId);
+
     const p = "clientY" in e ? e : (e.touches && e.touches[0]);
     const startY = p?.clientY ?? 0;
     dragRef.current = { id: rowId, startY, lastY: startY, index: indexById(rowId) };
 
-    // ドキュメントにグローバルリスナー（指が画面外に出ても追従）
     const move = (ev) => {
       const q = "clientY" in ev ? ev : (ev.touches && ev.touches[0]);
       const y = q?.clientY ?? dragRef.current.lastY;
-      const dy = y - dragRef.current.startY;
 
-      // 現在の要素の位置（画面上のY）を使って、重なった LI を拾う
-      const el = listRef.current;
-      if (!el) return;
+      // 指の真下の要素から LI を拾う
       const under = document.elementFromPoint(
         (ev.clientX ?? (q?.clientX ?? 1)),
         y
@@ -113,16 +174,13 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       const li = under ? under.closest("li") : null;
       if (!li) { dragRef.current.lastY = y; return; }
 
-      // data-id から目標インデックスを計算
       const targetIdAttr = li.getAttribute("data-id");
       let targetId = null;
       if (targetIdAttr != null) {
-        // 数値に見えるものは数値に
         targetId = /^\d+$/.test(targetIdAttr) ? parseInt(targetIdAttr, 10) : targetIdAttr;
       }
       const to = targetId != null ? indexById(targetId) : -1;
       if (to >= 0 && to !== dragRef.current.index) {
-        // 入れ替え（視覚効果は「その場で入れ替わる」方式）
         swapByIndex(dragRef.current.index, to);
         dragRef.current.index = to;
       }
@@ -130,17 +188,17 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     };
 
     const up = () => {
-      document.removeEventListener("pointermove", move, { passive: true });
+      document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
-      document.removeEventListener("touchmove", move, { passive: true });
+      document.removeEventListener("touchmove", move);
       document.removeEventListener("touchend", up);
       dragRef.current = null;
       finishDragCommit();
     };
 
     if (window.PointerEvent) {
-      document.addEventListener("pointermove", move, { passive: true });
-      document.addEventListener("pointerup", up, { passive: true });
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up);
     } else {
       document.addEventListener("touchmove", move, { passive: true });
       document.addEventListener("touchend", up, { passive: true });
@@ -149,7 +207,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   // ====== スワイプ（本文側で横、縦はスクロール） ======
   const onPointerDown = (e, rowId) => {
-    if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドル上は上下ドラッグ専用
+    if (e.target.closest(`.${styles.swl__handle}`)) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
     const p = e;
     beginSwipe(rowId, p.clientX, p.clientY);
@@ -164,7 +222,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       s.locked = true;
       s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
     }
-    if (s.mode !== "horizontal") return; // 縦はスクロールに譲る
+    if (s.mode !== "horizontal") return;
     updateSwipeX(dx);
   };
   const onPointerUpOrCancel = (e) => {
@@ -222,9 +280,11 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       <ul className={styles.swl} ref={listRef}>
         {rows.map((row, idx) => {
           const rowId = row.id ?? idx;
+          const dragging = draggingId === rowId;
           return (
             <li
-              className={`${styles.swl__row} ${leavingIds.includes(rowId) ? styles.isLeaving : ""}`}
+              ref={(el) => (liRefs.current[rowId] = el)}
+              className={`${styles.swl__row} ${leavingIds.includes(rowId) ? styles.isLeaving : ""} ${dragging ? styles.isDragging : ""}`}
               key={rowId}
               data-id={rowId}
             >
@@ -248,18 +308,14 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onTouchEnd={(e) => !window.PointerEvent && onTouchEnd(e)}
               >
                 <div className={styles.swl__grid}>
-                  {/* ▼ ハンドル：DIV化（既定挙動の影響を排除）、当たり広め */}
+                  {/* ハンドル：DIV化＆ドラッグ開始をここで拾う */}
                   <div
                     className={styles.swl__handle}
                     role="button"
                     aria-label="ドラッグで並べ替え"
                     tabIndex={0}
-                    onPointerDown={(e) => {
-                      if (window.PointerEvent) handleHandlePointerDown(e, rowId);
-                    }}
-                    onTouchStart={(e) => {
-                      if (!window.PointerEvent) handleHandlePointerDown(e, rowId);
-                    }}
+                    onPointerDown={(e) => { if (window.PointerEvent) handleHandlePointerDown(e, rowId); }}
+                    onTouchStart={(e) => { if (!window.PointerEvent) handleHandlePointerDown(e, rowId); }}
                   >
                     <img src={dots} alt="" aria-hidden="true" draggable="false" />
                   </div>
