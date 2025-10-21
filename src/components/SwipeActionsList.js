@@ -46,7 +46,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
       onStart() {
         // スワイプ中のtransitionを切る
-        Object.values(rowRefs.current).forEach((el) => { if (el) el && (el.style.transition = "none"); });
+        Object.values(rowRefs.current).forEach((el) => { if (el) el.style.transition = "none"; });
       },
       onEnd: (evt) => {
         const from = evt.oldIndex, to = evt.newIndex;
@@ -61,12 +61,12 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       },
     });
 
+    console.log("[genchi] sortable ready", !!listRef.current);
     return () => sortable.destroy();
   }, [onReorder]);
 
   // ====== スワイプ（削除ボタン表示） ======
-  // iOS ではセーフモード：スワイプを完全無効にしてドラッグに専念
-  const swipeEnabled = !isIOS;
+  const swipeEnabled = !isIOS; // iOS ではスワイプ無効化（競合回避）
 
   const getCurrentX = (el) => {
     if (!el) return 0;
@@ -114,7 +114,6 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   useEffect(() => {
     if (!swipeEnabled || !swipeState) return;
-    // 横スワイプ中に preventDefault を効かせる
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
     window.addEventListener("mousemove", handleTouchMove);
@@ -139,7 +138,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     setSwipeState({ startX, activeId: rowId, initialTranslateX: initialX });
   };
 
-  // 削除
+  // ====== 削除アニメーション ======
   function deleteRowSmooth(rowId, idx) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
@@ -149,7 +148,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     }, 300);
   }
 
-  // モーダル
+  // ====== モーダル ======
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && setOpen(false);
@@ -185,7 +184,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onMouseDown={(e) => startSwipe(e, rowId)}
               >
                 <div className={styles.swl__grid}>
-                  {/* ハンドル：ドラッグ優先にするための preventDefault を“ここだけ”入れる */}
+                  {/* ハンドル：ドラッグ優先のため preventDefault を明示 */}
                   <button
                     className={styles.swl__handle}
                     type="button"
