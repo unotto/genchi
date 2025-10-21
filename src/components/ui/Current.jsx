@@ -1,11 +1,9 @@
 import React from "react";
 
-const Current = ({ title, className }) => {
+export default function Current({ title, className }) {
   return (
-    <>
-      <p className={className}>{title}</p>
-    </>
+    <header style={{ marginBottom: 12 }} className={className}>
+      <h1 style={{ fontSize: "1.125rem", fontWeight: 700 }}>{title}</h1>
+    </header>
   );
-};
-
-export default Current;
+}
