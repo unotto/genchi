@@ -1,3 +1,4 @@
+// src/components/SwipeActionsList.js
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./SwipeActionsList.module.css";
 import Sortable from "sortablejs";
@@ -11,18 +12,21 @@ const DELETE_WIDTH = 80;
 const THRESHOLD = DELETE_WIDTH * 0.4;
 
 export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
+  // 表示用のローカル並び
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
 
+  // 最新 rows を参照するための ref（onEnd 内で使う）
+  const rowsRef = useRef(items);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+
   const listRef = useRef(null);
   const sortableRef = useRef(null);
-  const rowRefs = useRef({});
+  const rowRefs = useRef({});          // 各行の swipeableContent への参照
+  const swipeRef = useRef(null);       // Pointer Events 用のスワイプ状態
 
-  // Pointer Events 用スワイプ状態
-  const swipeRef = useRef(null);
-
-  const [leavingIds, setLeavingIds] = useState([]);
-  const [open, setOpen] = useState(false);
+  const [leavingIds, setLeavingIds] = useState([]); // 削除アニメ
+  const [open, setOpen] = useState(false);          // モーダル
   const [activeRow, setActiveRow] = useState(null);
 
   // ===== Sortable（ハンドル限定 / 縦 / フォールバック強制）=====
@@ -31,7 +35,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
     const sortable = Sortable.create(listRef.current, {
       animation: 150,
-      handle: `.${styles.swl__handle}`,   // ← ドットの領域を掴む
+      handle: `.${styles.swl__handle}`,   // ドットのハンドルのみ
       draggable: `.${styles.swl__row}`,
       direction: "vertical",
       ghostClass: styles.dragging,
@@ -47,21 +51,30 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       onStart() {
         Object.values(rowRefs.current).forEach((el) => { if (el) el.style.transition = "none"; });
       },
+
       onEnd: (evt) => {
         const from = evt.oldIndex, to = evt.newIndex;
         if (from === to || from == null || to == null) return;
+
+        // ローカル表示は即時更新（体感を良くする）
         setRows((prev) => {
-          const next = [...prev];
-          const [m] = next.splice(from, 1);
-          next.splice(to, 0, m);
-          onReorder && onReorder(next);
-          return next;
+          const optimistic = [...prev];
+          const [m] = optimistic.splice(from, 1);
+          optimistic.splice(to, 0, m);
+          return optimistic;
+        });
+
+        // 親（Pair）への反映は“次フレーム”に遅延して、setState-in-render 警告を回避
+        const base = [...rowsRef.current];
+        const [m] = base.splice(from, 1);
+        base.splice(to, 0, m);
+        requestAnimationFrame(() => {
+          onReorder && onReorder(base);
         });
       },
     });
 
     sortableRef.current = sortable;
-    console.log("[genchi] sortable ready");
     return () => { try { sortable.destroy(); } catch(e){} };
   }, [onReorder]);
 
@@ -81,7 +94,6 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     const el = rowRefs.current[rowId];
     if (!el) return;
 
-    // Pointer capture（move/upを確実に取る）
     e.currentTarget.setPointerCapture?.(e.pointerId);
 
     const startX = e.clientX;
@@ -99,7 +111,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       mode: null, // "horizontal" | "vertical"
     };
 
-    // スワイプ中は並び替え無効（競合回避）
+    // スワイプ中は並び替えを無効化（競合排除）
     try { sortableRef.current?.option("disabled", true); } catch {}
   };
 
@@ -117,7 +129,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
     }
 
-    if (s.mode !== "horizontal") return; // 縦は放置（スクロール優先）
+    if (s.mode !== "horizontal") return; // 縦はスクロール優先
 
     let x = s.initialX + dx;
     if (x > 0) x = Math.min(0, x / 4);
@@ -145,15 +157,13 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       setTimeout(() => { if (el) el.style.transition = "none"; }, 260);
     }
 
-    // 並び替え復帰
     try { sortableRef.current?.option("disabled", false); } catch {}
-    // キャプチャ解除
     e.currentTarget.releasePointerCapture?.(e.pointerId);
 
     swipeRef.current = null;
   };
 
-  // 削除アニメ
+  // ===== 削除（アニメーション）=====
   function deleteRowSmooth(rowId, idx) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
@@ -163,16 +173,12 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     }, 300);
   }
 
-  // モーダル
+  // ===== モーダル =====
   const openPopup = (row) => { setActiveRow(row); setOpen(true); };
   const closePopup = () => setOpen(false);
 
   return (
     <>
-    <div style={{position:'sticky',top:0,zIndex:9999,background:'#111',color:'#0f0',padding:'6px 10px',fontSize:12}}>
-  PAIR-VERSION: 20251018-TEST
-</div>
-
       <ul className={styles.swl} ref={listRef}>
         {rows.map((row, idx) => {
           const rowId = row.id ?? idx;
@@ -199,7 +205,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onPointerCancel={onPointerUpOrCancel}
               >
                 <div className={styles.swl__grid}>
-                  {/* ハンドル：preventDefault を外す（Sortable の開始を殺さない） */}
+                  {/* ハンドル（ドラッグ専用） */}
                   <button
                     className={styles.swl__handle}
                     type="button"
