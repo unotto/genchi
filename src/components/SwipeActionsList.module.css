@@ -105,6 +105,7 @@
 .swl__handle{ 
   position: relative;
   z-index: 3;
+  width: 30px;
   display:grid; 
   place-items:center; 
   padding:10px 2px 10px 0; 
