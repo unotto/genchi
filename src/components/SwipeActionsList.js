@@ -280,7 +280,13 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
               <div className={styles.modalLine}>
                 <div className={styles.modalMoney}>{activeRow.left}</div>
                 <div className={styles.modalArrow}>↓</div>
-                <div className={styles.modalMoney}>{activeRow.right}</div>
+                <div className={styles.modalMoney}>
+                  {String(activeRow.right).split("\n")[0]}
+                  <br />
+                  <span className={styles.modalSubUnit}>
+                    {String(activeRow.right).split("\n")[1] || ""}
+                  </span>
+                </div>
               </div>
               {activeRow.memo && <p className={styles.modalMemo}>{activeRow.memo}</p>}
             </div>

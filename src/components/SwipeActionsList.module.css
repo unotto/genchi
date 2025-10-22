@@ -247,7 +247,7 @@
   background: #fff;
   border-radius: 18px;
   box-shadow: 0 20px 60px rgba(0,0,0,.25);
-  padding: 18px 16px 30px;
+  padding: 10px 16px 30px;
 }
 
 .modalScroll {
@@ -278,8 +278,8 @@
 
 .modalClose {
   position: absolute;
-  top: 8px;
-  right: 10px;
+  top: 0;
+  right: 3px;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -308,6 +308,14 @@
 .modalMoney {
   color: #0077B6;
   font-weight: 700;
+}
+
+.modalSubUnit {
+  display: block;
+  font-size: 0.85em;
+  color: #687280;
+  font-weight: normal;
+  line-height: 1.4;
 }
 
 .modalArrow {
