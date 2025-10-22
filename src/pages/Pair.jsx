@@ -3,21 +3,16 @@ import Current from "../components/ui/Current";
 import SwipeActionsList from "../components/SwipeActionsList";
 import { loadHistory, saveHistory } from "../lib/history";
 
-function withStableIds(arr) {
-  return (arr || []).map((row, i) => {
-    if (row && row.id != null) return row;
-    const seed = `${row?.date || ""}|${row?.left || ""}|${row?.right || ""}|${row?.memo || ""}`;
-    const h = Array.from(seed).reduce((s, c) => ((s << 5) - s) + c.charCodeAt(0) | 0, 0);
-    return { ...row, id: `${h}_${i}` };
-  });
-}
-
+/**
+ * ペア履歴ページ：
+ * - localStorage の履歴を読み込んで SwipeActionsList に表示
+ * - SwipeActionsList 側で削除/並べ替えしたら保存
+ */
 export default function Pair() {
   const [items, setItems] = useState([]);
 
   useEffect(() => {
-    const init = withStableIds(loadHistory());
-    setItems(init);
+    setItems(loadHistory());
   }, []);
 
   const handleDelete = (rowOrIndex) => {
@@ -25,8 +20,8 @@ export default function Pair() {
       let next = [];
       if (typeof rowOrIndex === "number") {
         next = prev.filter((_, i) => i !== rowOrIndex);
-      } else if (rowOrIndex && rowOrIndex.id) {
-        next = prev.filter((it) => it.id !== rowOrIndex.id);
+      } else if (rowOrIndex && rowOrIndex.id != null) {
+        next = prev.filter((it) => (it.id ?? it._idx) !== (rowOrIndex.id ?? rowOrIndex._idx));
       } else {
         return prev;
       }
@@ -36,16 +31,19 @@ export default function Pair() {
   };
 
   const handleReorder = (next) => {
-    const normalized = withStableIds(next);
-    setItems(normalized);
-    saveHistory(normalized);
+    setItems(next);
+    saveHistory(next);
   };
 
   return (
     <section>
       <div className="page-body2">
         <Current title="ペア履歴" className="pair" />
-        <SwipeActionsList items={items} onDelete={handleDelete} onReorder={handleReorder} />
+        <SwipeActionsList
+          items={items}
+          onDelete={handleDelete}
+          onReorder={handleReorder}
+        />
       </div>
     </section>
   );

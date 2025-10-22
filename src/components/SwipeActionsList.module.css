@@ -2,7 +2,7 @@
   --card:#fff; 
   --muted:#6B7280; 
   --blue:#0077B6; 
-  --orange:#FF7043; /* 削除アクション用の新しいオレンジ色 */
+  --orange:#FF7043; 
   --shadow:0 2px 0 rgba(0,0,0,.10); 
 } 
 
@@ -32,37 +32,20 @@
   box-shadow: 0 2px 0 rgba(0,0,0,.10); 
   background:var(--card); 
   overflow:hidden; 
-  max-height: 200px; /* 削除アニメーションの基準となる最大値を設定 */
+  max-height: 200px; 
   transition: max-height .3s ease, opacity .3s ease, margin .3s ease;
-
-  /* 追加：テキスト選択を防いでドラッグを安定化（見た目は変わらない） */
   -webkit-user-select: none;
   user-select: none;
+  will-change: transform;
 } 
 
 .swl__row::before{ 
-  pointer-events: none;
   content:""; 
   position:absolute; 
   left:0; top:0; bottom:0; 
   width:30px; 
+  pointer-events: none; /* イベントを食わせない（重要） */
 } 
-
-.isDragging .swl__swipeableContent,.isDraggingContent {
-  position: relative;
-  z-index: 20;
-  opacity: 0.75;                      /* ← 半透明 */
-  transform: translate3d(0,0,0) scale(1.03);  /* ← わずかに拡大（体感UP） */
-  box-shadow: 0 12px 28px rgba(0,0,0,.25);    /* ← 影で浮かせる */
-  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
-  will-change: transform, opacity;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-}
-
-:root, .swl, .swl * {
-  -webkit-tap-highlight-color: transparent;
-}
 
 .isLeaving{
   max-height: 0;
@@ -70,24 +53,21 @@
   margin-bottom: 0;
 }
 
-/* ================================== */
-/* SWIPE ACTION: スワイプで出現するオレンジ色の削除ボタン */
-/* ================================== */
+/* スワイプで出現する削除ボタン */
 .swl__deleteAction {
   position: absolute;
   right: 0;
   top: 1%;
   bottom: 0;
-  width: 80px; /* JSのDELETE_WIDTHと一致 */
+  width: 80px; 
   background-color: var(--orange);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1; /* スワイプ可能コンテンツの下に配置 */
+  z-index: 1; 
   cursor: pointer;
   border: none;
   padding: 0;
-  /* スワイプで隠れないように、元コンテンツと同じ高さにする */
   height: 98%; 
 }
 .swl__deleteAction img{
@@ -95,29 +75,27 @@
   opacity: 1;
 }
 
-/* ================================== */
-/* SWIPEABLE CONTENT: transformで動く要素 */
-/* ================================== */
+/* transformで動く要素 */
 .swl__swipeableContent {
   position: relative;
-  z-index: 2; /* 削除ボタンの上に配置 */
-  background: var(--card); /* 背景を白にして削除ボタンを覆い隠す */
-  touch-action: pan-y;
-  will-change: transform; /* アニメーションパフォーマンスのヒント */
+  z-index: 2; 
+  background: var(--card); 
+  will-change: transform; 
   cursor: grab;
+  touch-action: pan-y;
 }
 
 /* 横並び：ハンドル / 本文 / 右端ヒント */ 
 .swl__grid{ 
   position:relative; 
   display:grid; 
-  grid-template-columns: 34px 1fr 44px; /* 元の3カラム構成を維持 */
+  grid-template-columns: 44px 1fr 44px; 
   align-items:center; 
   gap:8px; 
   min-height:72px; 
 } 
 
-/* 左ハンドル（見た目そのまま＋挙動系だけ追加） */ 
+/* ハンドル */
 .swl__handle{ 
   position: relative;
   z-index: 3;
@@ -127,31 +105,26 @@
   background: rgba(104, 114, 128, .25);
   border: none; 
   height: 100%;
-
-  /* ▼ 追加：iOS/Androidで“スクロールよりドラッグを優先”させる */
+  width: 44px;
   touch-action: none;
-  -ms-touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
   cursor: grab;
 }
 .swl__handle:active { cursor: grabbing; }
-
-/* 追加：ハンドル画像はイベントを透過（親ボタンに命中させる） */
-.swl__handle img {
-    width:10px !important; 
+.swl__handle img{ 
+  width:10px !important; 
   height:auto; 
   pointer-events: none;
   -webkit-user-drag: none;
-}
-
+} 
 
 /* 本文 */ 
 .swl__body{ padding:10px 0; min-width:0; } 
 .swl__date{ color:var(--muted); font-size:.82rem; margin-bottom:4px; } 
 
-/* クリック可能な本文（通貨行＋メモのみ） */ 
+/* クリック可能な本文 */ 
 .swl__bodyBtn{ 
   border:0; 
   background:transparent; 
@@ -163,7 +136,7 @@
 } 
 .swl__bodyBtn:active{ opacity:.9; } 
 
-/* 右20pxでフェード（薄いゴミ箱に被らない） */ 
+/* 右20pxでフェード */ 
 .swl__contentMask{ 
   overflow:hidden; 
   padding-right:20px; 
@@ -195,7 +168,7 @@
   overflow-wrap:anywhere; 
 } 
 
-/* 右端の薄いゴミ箱（装飾のみ） */ 
+/* 右端ヒント */ 
 .swl__hint{ 
   display:grid; 
   place-items:center; 
@@ -207,7 +180,7 @@
   opacity:.55; 
 } 
 
-/* ====== モーダル（ポップアップ） ====== */ 
+/* ====== モーダル ====== */ 
 .modalOverlay{ 
   position: fixed; 
   inset: 0; 
@@ -233,21 +206,16 @@
   height: 100%; 
   overflow: auto; 
   padding-right: 6px; 
-
-  /* 下に20pxの余白を残してフェードアウト */ 
-  -webkit-mask-image: linear-gradient(to bottom, 
-    #000 0%, 
-    #000 calc(100% - 20px), 
-    transparent 100%); 
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 20px), transparent 100%); 
   -webkit-mask-repeat: no-repeat; 
   -webkit-mask-size: 100% 100%; 
-
-  mask-image: linear-gradient(to bottom, 
-    #000 0%, 
-    #000 calc(100% - 20px), 
-    transparent 100%); 
+  mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 20px), transparent 100%); 
   mask-repeat: no-repeat; 
   mask-size: 100% 100%; 
+  margin-top: 12px; 
+  max-height: calc(80vh - 60px); 
+  word-break: break-word; 
+  overflow-wrap: anywhere; 
 } 
 
 .modalClose{ 
@@ -263,16 +231,6 @@
   cursor: pointer; 
 } 
 .modalClose:active{ transform: translateY(1px); } 
-
-/* 中身はスクロール可（長文対応） */ 
-.modalScroll{ 
-  margin-top: 12px; 
-  max-height: calc(80vh - 60px); 
-  overflow: auto; 
-  padding-right: 6px; /* スクロールバー余白 */ 
-  word-break: break-word; 
-  overflow-wrap: anywhere; 
-} 
 
 .modalDate{ 
   color: #6B7280; 
@@ -296,15 +254,32 @@
   color: #333; 
   line-height: 1.6; 
   font-size: 16px; 
-  white-space: pre-wrap; /* 改行も表示 */ 
+  white-space: pre-wrap; 
 }
 
-/* SortableJS のドラッグ中の見た目 */
-.dragging {
-  opacity: .6;
+/* SortableJS互換のゴースト（念のため） */
+.dragging { opacity: .6; }
+
+/* 掴んでる行の“浮き上がり”をCSS側でもサポ（JSでインライン適用が主） */
+.isDragging .swl__swipeableContent,
+.isDraggingContent {
+  position: relative;
+  z-index: 20;
+  opacity: 0.75;
+  transform: translate3d(0,0,0) scale(1.03);
+  box-shadow: 0 12px 28px rgba(0,0,0,.25);
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+  will-change: transform, opacity;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
-/* スワイプ時の項目タイトル改善 */
+/* 触感向上：タップハイライト無効化（iOS） */
+:root, .swl, .swl * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 小画面：スワイプタイトル（任意） */
 .swipe-title {
   background: linear-gradient(90deg, #0077B6 0%, #0099E0 100%);
   color: #FFFFFF;
@@ -315,8 +290,6 @@
   line-height: 1.4;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
-
-/* 小画面対応：ややフォントを大きく */
 @media (max-width: 420px) {
   .swipe-title {
     font-size: 1rem;
@@ -324,9 +297,7 @@
   }
 }
 
-/* ===== ここからグローバル（Sortableの内部要素に適用） ===== */
-
-/* フォールバックのドラッグ要素は固定配置・最前面で、レイアウトに影響させない */
+/* Sortable の内部要素互換（安全のため残置） */
 :global(.sortable-fallback) {
   position: fixed !important;
   z-index: 9999 !important;
@@ -334,9 +305,6 @@
   top: 0; 
   left: 0;
 }
-
-/* ゴーストは半透明だけ（既存 .dragging と競合しない） */
 :global(.sortable-ghost) {
   opacity: .6;
 }
-
