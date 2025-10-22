@@ -54,6 +54,7 @@
   background: #E5E5E5;
 }
 
+
 /* 中身もドラッグ中は #E5E5E5 に（白が透けないように） */
 .swl__row.isDragging .swl__swipeableContent {
   background: #E5E5E5;
@@ -68,6 +69,7 @@
 
 /* 横スワイプで露出する削除ボタン */
 .swl__deleteAction {
+ touch-action: pan-y;
   position: absolute;
   right: 0;
   top: 1%;
