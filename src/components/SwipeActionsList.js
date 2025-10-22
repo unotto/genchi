@@ -9,78 +9,26 @@ import batu from "../img/batu.webp";
 const DELETE_WIDTH = 80;
 const THRESHOLD = DELETE_WIDTH * 0.4;
 
-const isTouch =
-  typeof window !== "undefined" &&
-  ("ontouchstart" in window ||
-    (navigator && navigator.maxTouchPoints > 0) ||
-    (window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
-
 export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
-  // 表示用
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
   const rowsRef = useRef(rows);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
 
   const listRef = useRef(null);
-  const liRefs = useRef({});           // 各 <li>（FLIP用）
-  const rowRefs = useRef({});          // 各行の swipeableContent（横スワイプ用）
+  const liRefs = useRef({});   // <li>
+  const rowRefs = useRef({});  // .swl__swipeableContent
   const [leavingIds, setLeavingIds] = useState([]);
-
-  // ドラッグ中の行ID（見た目用）
   const [draggingId, setDraggingId] = useState(null);
 
-  // ====== 横スワイプ（削除ボタン） ======
+  // ===== 横スワイプ =====
   const swipeRef = useRef(null); // { activeId, startX, startY, initialX, locked, mode }
-
   const getCurrentX = (el) => {
     if (!el) return 0;
     const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(el.style.transform || "");
     if (m) return parseFloat(m[1]);
     const num = parseFloat((el.style.transform || "").replace(/[^0-9-.]/g, ""));
     return isNaN(num) ? 0 : num;
-  };
-
-  // iOSでも確実に“掴んでる感”を出す（インライン適用）
-  const applyDragLift = (el) => {
-    if (!el) return;
-    const x = getCurrentX(el) || 0; // 既存の横スワイプ位置を保持
-    el._orig = {
-      transition: el.style.transition,
-      transform: el.style.transform,
-      boxShadow: el.style.boxShadow,
-      opacity: el.style.opacity,
-      willChange: el.style.willChange,
-    };
-    el.style.willChange = "transform, opacity";
-    el.style.transition = "transform .12s ease, box-shadow .12s ease, opacity .12s ease";
-    el.style.transform = `translate3d(${x}px,0,0) scale(1.03)`;
-    el.style.boxShadow = "0 12px 28px rgba(0,0,0,.25)";
-    el.style.opacity = "0.75";
-    // Safari 安定化（強制リフロー）
-    // eslint-disable-next-line no-unused-expressions
-    el.offsetHeight;
-  };
-
-  const clearDragLift = (el) => {
-    if (!el) return;
-    const x = getCurrentX(el) || 0;
-    el.style.transition = "transform .12s ease, box-shadow .12s ease, opacity .12s ease";
-    el.style.transform = `translate3d(${x}px,0,0) scale(1.0)`;
-    el.style.boxShadow = "none";
-    el.style.opacity = "1";
-    const done = () => {
-      if (el._orig) {
-        el.style.transition = el._orig.transition || "";
-        el.style.transform  = `translate3d(${x}px,0,0)`; // scale を消し、横位置だけ残す
-        el.style.boxShadow  = el._orig.boxShadow || "";
-        el.style.opacity    = el._orig.opacity || "";
-        el.style.willChange = el._orig.willChange || "";
-        el._orig = null;
-      }
-      el.removeEventListener("transitionend", done);
-    };
-    el.addEventListener("transitionend", done);
   };
 
   const beginSwipe = (activeId, startX, startY) => {
@@ -96,7 +44,8 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     let x = s.initialX + dx;
     if (x > 0) x = Math.min(0, x / 4);
     if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
-    el.style.transform = `translateX(${x}px)`;
+    // スワイプ中は scale を入れない（横位置優先）
+    el.style.transform = `translate3d(${x}px,0,0)`;
   };
 
   const endSwipe = () => {
@@ -110,34 +59,90 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       else if (moved >= 10) finalX = 0;
       else finalX = currentX < -THRESHOLD ? -DELETE_WIDTH : 0;
       el.style.transition = "transform .25s ease-out";
-      el.style.transform = `translate3d(${finalX}px,0,0)`; // scale は 1.0 へ戻す
+      el.style.transform = `translate3d(${finalX}px,0,0)`;
       setTimeout(() => { if (el) el.style.transition = "none"; }, 260);
     }
     swipeRef.current = null;
   };
 
-  // ====== 上下ドラッグ入れ替え（ハンドル限定・純JS＋FLIP） ======
+  // ===== ドラッグ（上下入れ替え・純JS＋FLIP） =====
   const dragRef = useRef(null); // { id, startY, lastY, index }
-  const indexById = (id) => rowsRef.current.findIndex((r, i) => (r.id ?? i) === id);
+  const indexById = (id) =>
+    rowsRef.current.findIndex((r, i) => (r.id ?? i) === id);
 
-  // FLIP: 直前のtopを保存
+  // iOS でも確実に「掴んでる感」を出す（右基準 90% 縮小 / 70% 透明 / 右寄せ＋overflow解除）
+  const applyDragLift = (rowId) => {
+    const li = liRefs.current[rowId];
+    const el = rowRefs.current[rowId];
+    if (!el) return;
+    const x = getCurrentX(el) || 0;
+    // 退避
+    el._orig = {
+      transition: el.style.transition,
+      transform: el.style.transform,
+      boxShadow: el.style.boxShadow,
+      opacity: el.style.opacity,
+      willChange: el.style.willChange,
+      transformOrigin: el.style.transformOrigin,
+    };
+    if (li) {
+      li._origOverflow = li.style.overflow;
+      li.style.overflow = "visible"; // 文字が切れないように
+    }
+    el.style.willChange = "transform, opacity";
+    el.style.transition = "transform .08s ease, box-shadow .08s ease, opacity .08s ease";
+    el.style.transformOrigin = "right center"; // 右基準
+    el.style.transform = `translate3d(${x}px,0,0) scale(0.9)`; // 90%
+    el.style.boxShadow = "0 10px 24px rgba(0,0,0,.18)";
+    el.style.opacity = "0.7"; // 70%
+    // Safari 安定
+    el.offsetHeight; // eslint-disable-line no-unused-expressions
+  };
+
+  const clearDragLift = (rowId) => {
+    const li = liRefs.current[rowId];
+    const el = rowRefs.current[rowId];
+    if (!el) return;
+    const x = getCurrentX(el) || 0;
+    el.style.transition = "transform .1s ease, box-shadow .1s ease, opacity .1s ease";
+    el.style.transform = `translate3d(${x}px,0,0) scale(1)`;
+    el.style.boxShadow = "none";
+    el.style.opacity = "1";
+    const done = () => {
+      if (el._orig) {
+        el.style.transition = el._orig.transition || "";
+        el.style.transform = `translate3d(${x}px,0,0)`; // 横位置だけ維持
+        el.style.boxShadow = el._orig.boxShadow || "";
+        el.style.opacity = el._orig.opacity || "";
+        el.style.willChange = el._orig.willChange || "";
+        el.style.transformOrigin = el._orig.transformOrigin || "";
+        el._orig = null;
+      }
+      if (li && "_origOverflow" in li) {
+        li.style.overflow = li._origOverflow || "";
+        delete li._origOverflow;
+      }
+      el.removeEventListener("transitionend", done);
+    };
+    el.addEventListener("transitionend", done);
+  };
+
+  // FLIP 前計測
   const prevTopsRef = useRef(new Map());
   useLayoutEffect(() => {
     const map = new Map();
-    const rowsNow = rowsRef.current;
-    rowsNow.forEach((r, i) => {
+    rowsRef.current.forEach((r, i) => {
       const id = r.id ?? i;
       const el = liRefs.current[id];
       if (el) map.set(id, el.getBoundingClientRect().top);
     });
     prevTopsRef.current = map;
-  }, []); // 初回
+  }, []); // 初回のみ
 
   const measureAndAnimate = () => {
     const prev = prevTopsRef.current;
     if (!prev) return;
     const map = new Map();
-
     rowsRef.current.forEach((r, i) => {
       const id = r.id ?? i;
       const el = liRefs.current[id];
@@ -150,9 +155,8 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
         if (Math.abs(dy) > 0.5) {
           el.style.transition = "none";
           el.style.transform = `translateY(${dy}px)`;
-          // リフロー
-          el.offsetHeight; // eslint-disable-line no-unused-expressions
-          el.style.transition = "transform .18s ease";
+          el.offsetHeight; // reflow
+          el.style.transition = "transform .16s ease";
           el.style.transform = "translateY(0)";
           const clear = () => {
             el.style.transition = "";
@@ -162,14 +166,12 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
         }
       }
     });
-
     prevTopsRef.current = map;
   };
 
   const swapByIndex = (from, to) => {
     if (from === to || from < 0 || to < 0) return;
-
-    // 入れ替え前の座標を保存
+    // 直前座標
     const before = new Map();
     rowsRef.current.forEach((r, i) => {
       const id = r.id ?? i;
@@ -184,29 +186,20 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       next.splice(to, 0, m);
       return next;
     });
-
     requestAnimationFrame(measureAndAnimate);
   };
 
   const finishDragCommit = () => {
     const id = draggingId;
     setDraggingId(null);
-    if (id != null) {
-      // lift解除（守り）
-      const liftTarget = rowRefs.current[id];
-      clearDragLift(liftTarget);
-    }
-    const finalRows = rowsRef.current;
-    onReorder && onReorder(finalRows);
+    if (id != null) clearDragLift(id); // 念のため
+    onReorder && onReorder(rowsRef.current);
   };
 
   const handleHandlePointerDown = (e, rowId) => {
     e.preventDefault?.();
     setDraggingId(rowId);
-
-    // 掴んでる行の見た目を確実に持ち上げる
-    const liftTarget = rowRefs.current[rowId];
-    applyDragLift(liftTarget);
+    applyDragLift(rowId); // 見た目を先に確定
 
     const p = "clientY" in e ? e : (e.touches && e.touches[0]);
     const startY = p?.clientY ?? 0;
@@ -237,12 +230,12 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     };
 
     const up = () => {
-      clearDragLift(liftTarget);
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
       document.removeEventListener("touchmove", move);
       document.removeEventListener("touchend", up);
       dragRef.current = null;
+      clearDragLift(rowId);
       finishDragCommit();
     };
 
@@ -255,12 +248,11 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     }
   };
 
-  // ====== スワイプ（本文側で横、縦はスクロール） ======
+  // 本文側の横スワイプ
   const onPointerDown = (e, rowId) => {
-    if (e.target.closest(`.${styles.swl__handle}`)) return; // ハンドル上は上下ドラッグ
+    if (e.target.closest(`.${styles.swl__handle}`)) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    const p = e;
-    beginSwipe(rowId, p.clientX, p.clientY);
+    beginSwipe(rowId, e.clientX, e.clientY);
   };
   const onPointerMove = (e) => {
     const s = swipeRef.current; if (!s) return;
@@ -272,12 +264,11 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
       s.locked = true;
       s.mode = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
     }
-    if (s.mode !== "horizontal") return; // 縦はスクロール
+    if (s.mode !== "horizontal") return;
     updateSwipeX(dx);
   };
   const onPointerUpOrCancel = (e) => {
-    const s = swipeRef.current;
-    if (!s) return;
+    if (!swipeRef.current) return;
     e.currentTarget.releasePointerCapture?.(e.pointerId);
     endSwipe();
   };
@@ -303,7 +294,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   };
   const onTouchEnd = () => { endSwipe(); };
 
-  // ====== 削除（アニメ） ======
+  // ===== 削除 =====
   function deleteRowSmooth(rowId, idx) {
     setLeavingIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
     setTimeout(() => {
@@ -313,7 +304,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     }, 300);
   }
 
-  // ====== モーダル ======
+  // ===== モーダル =====
   const [open, setOpen] = useState(false);
   const [activeRow, setActiveRow] = useState(null);
   useEffect(() => {
@@ -358,7 +349,6 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
                 onTouchEnd={(e) => !window.PointerEvent && onTouchEnd(e)}
               >
                 <div className={styles.swl__grid}>
-                  {/* ハンドル：DIV化＆ドラッグ開始をここで拾う */}
                   <div
                     className={styles.swl__handle}
                     role="button"
