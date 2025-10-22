@@ -297,7 +297,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
               </button>
 
               <div
-                className={styles.swl__swipeableContent}
+                className={`${styles.swl__swipeableContent} ${dragging ? styles.isDraggingContent : ""}`}   {/* ★これ追加 */}
                 ref={(el) => (rowRefs.current[rowId] = el)}
                 onPointerDown={(e) => window.PointerEvent && onPointerDown(e, rowId)}
                 onPointerMove={(e) => window.PointerEvent && onPointerMove(e)}
