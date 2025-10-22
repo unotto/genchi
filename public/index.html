@@ -2,14 +2,45 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
+
+    <!-- ▼ Favicon & App icons -->
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/favicon-16x16.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link rel="mask-icon" href="%PUBLIC_URL%/safari-pinned-tab.svg" color="#0077B6" />
+
+    <!-- ▼ Theme / Tile -->
+    <meta name="theme-color" content="#0077B6" />
+    <meta name="msapplication-TileColor" content="#ffffff" />
+
+    <!-- ▼ OGP / SNSプレビュー -->
+    <meta property="og:title" content="ゲンチレート | Pair History" />
+    <meta property="og:description" content="通貨ペア履歴をすぐに確認できるツール" />
+    <meta property="og:image" content="%PUBLIC_URL%/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta property="og:site_name" content="ゲンチレート" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- ▼ 既存 -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <meta name="theme-color" content="#000000" />
     <title>Pair History</title>
+
     <style>
-      body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans";
-           margin:0;background:#f7f8fa;}
-      .page-body2{max-width:720px;margin:0 auto;padding:20px;}
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans";
+        margin: 0;
+        background: #f7f8fa;
+      }
+      .page-body2 {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 20px;
+      }
     </style>
   </head>
   <body>
