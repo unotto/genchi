@@ -1,135 +1,345 @@
-:root{
-  --card:#fff;
-  --muted:#6B7280;
-  --blue:#0077B6;
-  --orange:#FF7043;
-  --shadow:0 2px 0 rgba(0,0,0,.10);
+:root {
+  --card: #fff;
+  --muted: #6B7280;
+  --blue: #0077B6;
+  --orange: #FF7043;
+  --shadow: 0 2px 0 rgba(0,0,0,.10);
 }
 
-.swl{ list-style:none; margin:12px 0; padding:0; display:flex; flex-direction:column; gap:12px; }
-.swl img{ max-width:none !important; width:auto; height:auto; display:block; object-fit:contain; }
+/* リスト本体 */
+.swl {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 画像のグローバル指定から保護 */
+.swl img {
+  max-width: none !important;
+  width: auto;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
 
 /* 行カード（li） */
-.swl__row{
-  position:relative;
-  border-radius:16px 0 0 16px;
+.swl__row {
+  position: relative;
+  border-radius: 16px 0 0 16px;
   box-shadow: 0 2px 0 rgba(0,0,0,.10);
-  background:var(--card);
-  overflow:hidden;                 /* 角丸維持 */
-  max-height:200px;
+  background: var(--card);
+  overflow: hidden; /* 角丸維持 */
+  max-height: 200px;
   transition:
-    transform .1s ease, opacity .1s ease, box-shadow .1s ease,
-    max-height .3s ease, opacity .3s ease, margin .3s ease;
-  -webkit-user-select:none; user-select:none;
-  will-change:transform;
-  transform-origin:right center;   /* 右基準（縮小時） */
+    transform .1s ease,
+    opacity .1s ease,
+    box-shadow .1s ease,
+    max-height .3s ease,
+    margin .3s ease;
+  -webkit-user-select: none;
+  user-select: none;
+  will-change: transform;
+  transform-origin: right center; /* 縮小時の基準 */
 }
 
-/* ★ ドラッグ中の見た目は「クラスだけ」で管理（ドロップまで維持） */
-.swl__row.isDragging{
+/* ドラッグ中：90%・半透明・影 + 背景を #E5E5E5 に */
+.swl__row.isDragging {
   transform: scale(0.9);
   opacity: .7;
   box-shadow: 0 10px 24px rgba(0,0,0,.18);
   z-index: 5;
+  background: #E5E5E5;
 }
 
-/* ハンドルはドラッグ中も常に同じ色（ドロップで自動的に元に戻る） */
-.swl__row .swl__handle,
-.swl__row.isDragging .swl__handle{
-  background: rgba(104,114,128,.25);
+/* 中身もドラッグ中は #E5E5E5 に（白が透けないように） */
+.swl__row.isDragging .swl__swipeableContent {
+  background: #E5E5E5;
 }
 
-.isLeaving{ max-height:0; opacity:0; margin-bottom:0; }
+/* 削除アニメのため */
+.isLeaving {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
 
 /* 横スワイプで露出する削除ボタン */
-.swl__deleteAction{
-  position:absolute; right:0; top:1%; bottom:0; width:80px;
-  background-color:var(--orange);
-  display:flex; justify-content:center; align-items:center;
-  z-index:1; cursor:pointer; border:none; padding:0; height:98%;
+.swl__deleteAction {
+  position: absolute;
+  right: 0;
+  top: 1%;
+  bottom: 0;
+  width: 80px;
+  background-color: var(--orange);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  height: 98%;
 }
-.swl__deleteAction img{ height:auto; opacity:1; }
 
-/* コンテンツ（横スワイプ対象） */
-.swl__swipeableContent{
-  position:relative; z-index:2; background:var(--card);
-  will-change:transform; cursor:grab; touch-action: pan-y;
+.swl__deleteAction img {
+  height: auto;
+  opacity: 1;
+}
+
+/* 横スワイプ対象のコンテンツ */
+.swl__swipeableContent {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  will-change: transform;
+  cursor: grab;
+  touch-action: pan-y;
+  border-radius: inherit; /* 角丸継承 */
+}
+
+/* 横並びグリッド（ハンドル / 本文 / 右ヒント） */
+.swl__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  min-height: 72px;
   border-radius: inherit;
 }
 
-/* レイアウト */
-.swl__grid{
-  position:relative; display:grid; grid-template-columns:34px 1fr 44px;
-  align-items:center; gap:8px; min-height:72px;
-  border-radius: inherit;
+/* ハンドル（色を常に維持、幅指定なし） */
+.swl__handle {
+  display: grid;
+  place-items: center;
+  padding: 10px 2px 10px 0;
+  background: rgba(104,114,128,.25); /* ご指定の色 */
+  border: none;
+  height: 100%;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
 }
 
-/* ハンドル（幅指定ナシ・色は上で統一） */
-.swl__handle{
-  display:grid; place-items:center;
-  padding:10px 2px 10px 0;
-  border:none; height:100%;
-  touch-action:none;
-  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
-  cursor:grab;
+.swl__handle:active {
+  cursor: grabbing;
 }
-.swl__handle:active{ cursor:grabbing; }
-.swl__handle img{ width:10px !important; height:auto; pointer-events:none; -webkit-user-drag:none; }
+
+.swl__handle img {
+  width: 10px !important;
+  height: auto;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
 
 /* 本文 */
-.swl__body{ padding:10px 0; min-width:0; }
-.swl__date{ color:var(--muted); font-size:.82rem; margin-bottom:4px; }
-
-.swl__bodyBtn{ border:0; background:transparent; text-align:left; padding:0; width:100%; min-width:0; cursor:pointer; }
-.swl__bodyBtn:active{ opacity:.9; }
-
-.swl__contentMask{
-  overflow:hidden; padding-right:20px;
-  -webkit-mask-image: linear-gradient(to right,#000 0%,#000 calc(100% - 20px),transparent 100%);
-  mask-image: linear-gradient(to right,#000 0%,#000 calc(100% - 20px),transparent 100%);
+.swl__body {
+  padding: 10px 0;
+  min-width: 0;
 }
 
-.swl__line{ display:flex; align-items:center; gap:10px; font-weight:600; color:var(--blue); white-space:nowrap; overflow:hidden; }
-.swl__arrow{ color:#9aa3ad; }
-.swl__money{} .em{ color:var(--blue); }
+.swl__date {
+  color: var(--muted);
+  font-size: .82rem;
+  margin-bottom: 4px;
+}
 
-.swl__memo{
-  margin-top:4px; color:var(--muted); font-size:16px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  word-break:break-word; overflow-wrap:anywhere;
+/* クリック可能な本文 */
+.swl__bodyBtn {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  width: 100%;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.swl__bodyBtn:active {
+  opacity: .9;
+}
+
+/* 右20pxでフェード */
+.swl__contentMask {
+  overflow: hidden;
+  padding-right: 20px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 0%,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 0%,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
+}
+
+.swl__line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--blue);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.swl__arrow {
+  color: #9aa3ad;
+}
+
+.swl__money {}
+
+.em {
+  color: var(--blue);
+}
+
+.swl__memo {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* 右端ヒント */
-.swl__hint{ display:grid; place-items:center; padding-right:10px; }
-.swl__hint img{ width:20px !important; height:auto; opacity:.55; }
-
-/* ===== モーダル =====（既存のまま） */
-.modalOverlay{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:grid; place-items:center; z-index:999; }
-.modal{
-  position:relative; width:calc(100% - 40px); max-width:420px; overflow:hidden;
-  height:30vh; background:#fff; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.25); padding:18px 16px 30px;
+.swl__hint {
+  display: grid;
+  place-items: center;
+  padding-right: 10px;
 }
-.modalScroll{
-  height:100%; overflow:auto; padding-right:6px;
-  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 calc(100% - 20px),transparent 100%);
-  -webkit-mask-repeat:no-repeat; -webkit-mask-size:100% 100%;
-  mask-image:linear-gradient(to bottom,#000 0%,#000 calc(100% - 20px),transparent 100%);
-  mask-repeat:no-repeat; mask-size:100% 100%;
-  margin-top:12px; max-height:calc(80vh - 60px);
-  word-break:break-word; overflow-wrap:anywhere;
-}
-.modalClose{ position:absolute; top:8px; right:10px; width:32px; height:32px; border-radius:50%; border:0; background:none; color:#fff; cursor:pointer; }
-.modalClose:active{ transform:translateY(1px); }
-.modalDate{ color:#6B7280; font-size:16px; margin-bottom:8px; }
-.modalLine{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-.modalMoney{ color:#0077B6; font-weight:700; }
-.modalArrow{ color:#9aa3ad; }
-.modalMemo{ color:#333; line-height:1.6; font-size:16px; white-space:pre-wrap; }
 
-/* 触感向上 */
-.dragging{ opacity:.6; }
-:root, .swl, .swl * { -webkit-tap-highlight-color: transparent; }
+.swl__hint img {
+  width: 20px !important;
+  height: auto;
+  opacity: .55;
+}
+
+/* ===== モーダル ===== */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: grid;
+  place-items: center;
+  z-index: 999;
+}
+
+.modal {
+  position: relative;
+  width: calc(100% - 40px);
+  max-width: 420px;
+  overflow: hidden;
+  height: 30vh;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  padding: 18px 16px 30px;
+}
+
+.modalScroll {
+  height: 100%;
+  overflow: auto;
+  padding-right: 6px;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  margin-top: 12px;
+  max-height: calc(80vh - 60px);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.modalClose {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.modalClose:active {
+  transform: translateY(1px);
+}
+
+.modalDate {
+  color: #6B7280;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.modalLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.modalMoney {
+  color: #0077B6;
+  font-weight: 700;
+}
+
+.modalArrow {
+  color: #9aa3ad;
+}
+
+.modalMemo {
+  color: #333;
+  line-height: 1.6;
+  font-size: 16px;
+  white-space: pre-wrap;
+}
+
+/* 視覚補助 */
+.dragging {
+  opacity: .6;
+}
+
+:root,
+.swl,
+.swl * {
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* Sortable 互換（保険） */
-:global(.sortable-fallback){ position:fixed !important; z-index:9999 !important; pointer-events:none !important; top:0; left:0; }
-:global(.sortable-ghost){ opacity:.6; }
+:global(.sortable-fallback) {
+  position: fixed !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+  top: 0;
+  left: 0;
+}
+
+:global(.sortable-ghost) {
+  opacity: .6;
+}
