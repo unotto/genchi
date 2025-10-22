@@ -12,15 +12,27 @@ const THRESHOLD = DELETE_WIDTH * 0.4;
 export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const [rows, setRows] = useState(items);
   useEffect(() => setRows(items), [items]);
+
   const rowsRef = useRef(rows);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
 
-  const listRef = useRef(null);
-  const liRefs = useRef({});   // <li>（行そのもの）
-  const rowRefs = useRef({});  // .swl__swipeableContent（横スワイプ対象）
+  // ---- 安定ID（indexをkeyにしない） ----
+  const uidMapRef = useRef(new WeakMap());
+  const uidSeqRef = useRef(0);
+  const getRowId = (row, i) => {
+    if (row && row.id != null) return row.id;
+    const map = uidMapRef.current;
+    if (map.has(row)) return map.get(row);
+    const uid = `uid_${Date.now()}_${uidSeqRef.current++}`;
+    map.set(row, uid);
+    return uid;
+  };
+
+  const liRefs  = useRef({});
+  const rowRefs = useRef({});
 
   const [leavingIds, setLeavingIds] = useState([]);
-  const [draggingId, setDraggingId] = useState(null);
+  const [draggingId, setDraggingId] = useState(null); // ← ドラッグ中の行ID
 
   // ===========================
   // 横スワイプ（削除）
@@ -48,7 +60,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     let x = s.initialX + dx;
     if (x > 0) x = Math.min(0, x / 4);
     if (x < -DELETE_WIDTH) x = -DELETE_WIDTH + (x + DELETE_WIDTH) / 4;
-    el.style.transform = `translate3d(${x}px,0,0)`; // 横は translate のみ
+    el.style.transform = `translate3d(${x}px,0,0)`;
   };
 
   const endSwipe = () => {
@@ -71,65 +83,15 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   // ===========================
   // 上下ドラッグ（純JS＋FLIP）
   // ===========================
-  const dragRef = useRef(null); // { id, startY, lastY, index }
-  const indexById = (id) =>
-    rowsRef.current.findIndex((r, i) => (r.id ?? i) === id);
+  const dragRef = useRef(null); // { id, index }
+  const indexById = (id) => rowsRef.current.findIndex((r, i) => getRowId(r, i) === id);
 
-  // ★ li 全体に「掴んでる演出」を適用（右基準 90%・opacity 0.7・影・overflow visible）
-  const applyRowLift = (rowId) => {
-    const li = liRefs.current[rowId];
-    if (!li) return;
-
-    li._orig = {
-      transition: li.style.transition,
-      transform: li.style.transform,
-      opacity: li.style.opacity,
-      boxShadow: li.style.boxShadow,
-      transformOrigin: li.style.transformOrigin,
-      overflow: li.style.overflow,
-    };
-
-    li.style.transformOrigin = "right center";
-    li.style.transition = "transform .08s ease, opacity .08s ease, box-shadow .08s ease";
-    li.style.transform = "scale(0.9)"; // ← 行（li）全体を90%
-    li.style.opacity = "0.7";          // ← 70%
-    li.style.boxShadow = "0 10px 24px rgba(0,0,0,.18)";
-    li.style.overflow = "visible";     // ← テキストが切れないように
-    // Safari 安定化
-    void li.offsetHeight;
-    li.classList.add(styles.isDragging); // 保険
-  };
-
-  const clearRowLift = (rowId) => {
-    const li = liRefs.current[rowId];
-    if (!li) return;
-
-    li.style.transition = "transform .1s ease, opacity .1s ease, box-shadow .1s ease";
-    li.style.transform = "scale(1)";
-    li.style.opacity = "1";
-    li.style.boxShadow = "none";
-
-    const done = () => {
-      li.classList.remove(styles.isDragging);
-      const o = li._orig || {};
-      li.style.transition = o.transition || "";
-      li.style.transform  = o.transform || "";
-      li.style.opacity    = o.opacity || "";
-      li.style.boxShadow  = o.boxShadow || "";
-      li.style.transformOrigin = o.transformOrigin || "";
-      li.style.overflow   = o.overflow || "";
-      li._orig = null;
-      li.removeEventListener("transitionend", done);
-    };
-    li.addEventListener("transitionend", done);
-  };
-
-  // FLIP 前回 top を保存（初回）
+  // FLIP用に直前の top を保持
   const prevTopsRef = useRef(new Map());
   useLayoutEffect(() => {
     const map = new Map();
     rowsRef.current.forEach((r, i) => {
-      const id = r.id ?? i;
+      const id = getRowId(r, i);
       const el = liRefs.current[id];
       if (el) map.set(id, el.getBoundingClientRect().top);
     });
@@ -142,13 +104,13 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
     const map = new Map();
     rowsRef.current.forEach((r, i) => {
-      const id = r.id ?? i;
+      const id = getRowId(r, i);
       const el = liRefs.current[id];
       if (!el) return;
       const to = el.getBoundingClientRect().top;
       map.set(id, to);
 
-      // ★ ドラッグ中の行は FLIP を当てない（transform の競合を避け、文字消失を防ぐ）
+      // ドラッグ中の行はFLIPを当てない
       if (id === draggingId) return;
 
       const from = prev.get(id);
@@ -157,7 +119,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
         if (Math.abs(dy) > 0.5) {
           el.style.transition = "none";
           el.style.transform = `translateY(${dy}px)`;
-          void el.offsetHeight; // reflow
+          void el.offsetHeight;
           el.style.transition = "transform .16s ease";
           el.style.transform = "translateY(0)";
           const clear = () => {
@@ -175,10 +137,9 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
   const swapByIndex = (from, to) => {
     if (from === to || from < 0 || to < 0) return;
 
-    // 直前 top を保存
     const before = new Map();
     rowsRef.current.forEach((r, i) => {
-      const id = r.id ?? i;
+      const id = getRowId(r, i);
       const el = liRefs.current[id];
       if (el) before.set(id, el.getBoundingClientRect().top);
     });
@@ -194,44 +155,37 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     requestAnimationFrame(measureAndAnimate);
   };
 
+  // 並べ替えで再レンダーされても、`isDragging` クラスで見た目を維持
+  useLayoutEffect(() => {
+    // 何もしなくてOK：見た目は CSS の .isDragging で管理
+  }, [rows, draggingId]);
+
   const finishDragCommit = () => {
-    const id = draggingId;
-    setDraggingId(null);
-    if (id != null) clearRowLift(id);
+    setDraggingId(null); // ← クラスが外れて元の見た目（サイズ＆ハンドル色）に戻る
     onReorder && onReorder(rowsRef.current);
   };
 
   const handleHandlePointerDown = (e, rowId) => {
     e.preventDefault?.();
-    setDraggingId(rowId);
-    applyRowLift(rowId); // li 全体に 90%/0.7/右基準
+    setDraggingId(rowId); // ← li に isDragging クラスを付けるトリガー
 
-    const p = "clientY" in e ? e : (e.touches && e.touches[0]);
-    const startY = p?.clientY ?? 0;
-    dragRef.current = { id: rowId, startY, lastY: startY, index: indexById(rowId) };
+    dragRef.current = { id: rowId, index: indexById(rowId) };
 
     const move = (ev) => {
-      const q = "clientY" in ev ? ev : (ev.touches && ev.touches[0]);
-      const y = q?.clientY ?? dragRef.current.lastY;
-
-      const under = document.elementFromPoint(
-        (ev.clientX ?? (q?.clientX ?? 1)),
-        y
-      );
+      // 指下/マウス下の li を見つけて index を取得
+      const pointX = "clientX" in ev ? ev.clientX : (ev.touches?.[0]?.clientX ?? 1);
+      const pointY = "clientY" in ev ? ev.clientY : (ev.touches?.[0]?.clientY ?? 1);
+      const under = document.elementFromPoint(pointX, pointY);
       const li = under ? under.closest("li") : null;
-      if (!li) { dragRef.current.lastY = y; return; }
+      if (!li) return;
 
-      const targetIdAttr = li.getAttribute("data-id");
-      let targetId = null;
-      if (targetIdAttr != null) {
-        targetId = /^\d+$/.test(targetIdAttr) ? parseInt(targetIdAttr, 10) : targetIdAttr;
-      }
-      const to = targetId != null ? indexById(targetId) : -1;
+      const targetAttr = li.getAttribute("data-id");
+      const toId = targetAttr && (/^\d+$/.test(targetAttr) ? parseInt(targetAttr, 10) : targetAttr);
+      const to = toId != null ? indexById(toId) : -1;
       if (to >= 0 && to !== dragRef.current.index) {
         swapByIndex(dragRef.current.index, to);
         dragRef.current.index = to;
       }
-      dragRef.current.lastY = y;
     };
 
     const up = () => {
@@ -252,7 +206,7 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
     }
   };
 
-  // 本文側の横スワイプ（ハンドル上では開始しない）
+  // 本文の横スワイプ（ハンドルは除外）
   const onPointerDown = (e, rowId) => {
     if (e.target.closest(`.${styles.swl__handle}`)) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -326,9 +280,9 @@ export default function SwipeActionsList({ items = [], onDelete, onReorder }) {
 
   return (
     <>
-      <ul className={styles.swl} ref={listRef}>
+      <ul className={styles.swl}>
         {rows.map((row, idx) => {
-          const rowId = row.id ?? idx;
+          const rowId = getRowId(row, idx);
           const dragging = draggingId === rowId;
           return (
             <li

@@ -6,24 +6,8 @@
   --shadow:0 2px 0 rgba(0,0,0,.10);
 }
 
-/* モジュール内 img を保護 */
-.swl img{
-  max-width:none !important;
-  width:auto;
-  height:auto;
-  display:block;
-  object-fit:contain;
-}
-
-/* リスト */
-.swl{
-  list-style:none;
-  margin:12px 0;
-  padding:0;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
+.swl{ list-style:none; margin:12px 0; padding:0; display:flex; flex-direction:column; gap:12px; }
+.swl img{ max-width:none !important; width:auto; height:auto; display:block; object-fit:contain; }
 
 /* 行カード（li） */
 .swl__row{
@@ -31,165 +15,99 @@
   border-radius:16px 0 0 16px;
   box-shadow: 0 2px 0 rgba(0,0,0,.10);
   background:var(--card);
-  overflow:hidden;                 /* 通常は隠す */
-  max-height: 200px;
-  transition: max-height .3s ease, opacity .3s ease, margin .3s ease;
-  -webkit-user-select: none;
-  user-select: none;
-  will-change: transform;
-  transform-origin: right center;  /* 右基準（ドラッグ時の縮小に効く） */
+  overflow:hidden;                 /* 角丸維持 */
+  max-height:200px;
+  transition:
+    transform .1s ease, opacity .1s ease, box-shadow .1s ease,
+    max-height .3s ease, opacity .3s ease, margin .3s ease;
+  -webkit-user-select:none; user-select:none;
+  will-change:transform;
+  transform-origin:right center;   /* 右基準（縮小時） */
 }
 
-/* ドラッグ中はテキストが切れないように */
-.isDragging{
-  overflow: visible;
+/* ★ ドラッグ中の見た目は「クラスだけ」で管理（ドロップまで維持） */
+.swl__row.isDragging{
+  transform: scale(0.9);
+  opacity: .7;
+  box-shadow: 0 10px 24px rgba(0,0,0,.18);
+  z-index: 5;
 }
 
-.swl__row::before{
-  content:"";
-  position:absolute;
-  left:0; top:0; bottom:0;
-  width:30px;
-  pointer-events:none;
+/* ハンドルはドラッグ中も常に同じ色（ドロップで自動的に元に戻る） */
+.swl__row .swl__handle,
+.swl__row.isDragging .swl__handle{
+  background: rgba(104,114,128,.25);
 }
 
-.isLeaving{
-  max-height: 0;
-  opacity: 0;
-  margin-bottom: 0;
-}
+.isLeaving{ max-height:0; opacity:0; margin-bottom:0; }
 
-/* 削除ボタン */
+/* 横スワイプで露出する削除ボタン */
 .swl__deleteAction{
-  position:absolute;
-  right:0;
-  top:1%;
-  bottom:0;
-  width:80px;
+  position:absolute; right:0; top:1%; bottom:0; width:80px;
   background-color:var(--orange);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  z-index:1;
-  cursor:pointer;
-  border:none;
-  padding:0;
-  height:98%;
+  display:flex; justify-content:center; align-items:center;
+  z-index:1; cursor:pointer; border:none; padding:0; height:98%;
 }
 .swl__deleteAction img{ height:auto; opacity:1; }
 
-/* スワイプで動かす本体 */
+/* コンテンツ（横スワイプ対象） */
 .swl__swipeableContent{
-  position:relative;
-  z-index:2;
-  background:var(--card);
-  will-change:transform;
-  cursor:grab;
-  touch-action: pan-y;
+  position:relative; z-index:2; background:var(--card);
+  will-change:transform; cursor:grab; touch-action: pan-y;
+  border-radius: inherit;
 }
 
 /* レイアウト */
 .swl__grid{
-  position:relative;
-  display:grid;
-  grid-template-columns:44px 1fr 44px;
-  align-items:center;
-  gap:8px;
-  min-height:72px;
+  position:relative; display:grid; grid-template-columns:34px 1fr 44px;
+  align-items:center; gap:8px; min-height:72px;
+  border-radius: inherit;
 }
 
-/* ハンドル */
+/* ハンドル（幅指定ナシ・色は上で統一） */
 .swl__handle{
-  position:relative;
-  z-index:3;
-  display:grid;
-  place-items:center;
+  display:grid; place-items:center;
   padding:10px 2px 10px 0;
-  background: rgba(104,114,128,.25);
-  border:none;
-  height:100%;
-  width:44px;
+  border:none; height:100%;
   touch-action:none;
-  -webkit-user-select:none;
-  user-select:none;
-  -webkit-touch-callout:none;
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   cursor:grab;
 }
 .swl__handle:active{ cursor:grabbing; }
-.swl__handle img{
-  width:10px !important;
-  height:auto;
-  pointer-events:none;
-  -webkit-user-drag:none;
-}
+.swl__handle img{ width:10px !important; height:auto; pointer-events:none; -webkit-user-drag:none; }
 
 /* 本文 */
 .swl__body{ padding:10px 0; min-width:0; }
 .swl__date{ color:var(--muted); font-size:.82rem; margin-bottom:4px; }
 
-.swl__bodyBtn{
-  border:0;
-  background:transparent;
-  text-align:left;
-  padding:0;
-  width:100%;
-  min-width:0;
-  cursor:pointer;
-}
+.swl__bodyBtn{ border:0; background:transparent; text-align:left; padding:0; width:100%; min-width:0; cursor:pointer; }
 .swl__bodyBtn:active{ opacity:.9; }
 
 .swl__contentMask{
-  overflow:hidden;
-  padding-right:20px;
+  overflow:hidden; padding-right:20px;
   -webkit-mask-image: linear-gradient(to right,#000 0%,#000 calc(100% - 20px),transparent 100%);
   mask-image: linear-gradient(to right,#000 0%,#000 calc(100% - 20px),transparent 100%);
 }
 
-.swl__line{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-weight:600;
-  color:var(--blue);
-  white-space:nowrap;
-  overflow:hidden;
-}
+.swl__line{ display:flex; align-items:center; gap:10px; font-weight:600; color:var(--blue); white-space:nowrap; overflow:hidden; }
 .swl__arrow{ color:#9aa3ad; }
-.swl__money{}
-.em{ color:var(--blue); }
+.swl__money{} .em{ color:var(--blue); }
 
 .swl__memo{
-  margin-top:4px;
-  color:var(--muted);
-  font-size:16px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  word-break:break-word;
-  overflow-wrap:anywhere;
+  margin-top:4px; color:var(--muted); font-size:16px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  word-break:break-word; overflow-wrap:anywhere;
 }
 
 /* 右端ヒント */
 .swl__hint{ display:grid; place-items:center; padding-right:10px; }
 .swl__hint img{ width:20px !important; height:auto; opacity:.55; }
 
-/* ===== モーダル ===== */
-.modalOverlay{
-  position:fixed; inset:0;
-  background:rgba(0,0,0,.45);
-  display:grid; place-items:center;
-  z-index:999;
-}
+/* ===== モーダル =====（既存のまま） */
+.modalOverlay{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:grid; place-items:center; z-index:999; }
 .modal{
-  position:relative;
-  width:calc(100% - 40px);
-  max-width:420px;
-  overflow:hidden;
-  height:30vh;
-  background:#fff;
-  border-radius:18px;
-  box-shadow:0 20px 60px rgba(0,0,0,.25);
-  padding:18px 16px 30px;
+  position:relative; width:calc(100% - 40px); max-width:420px; overflow:hidden;
+  height:30vh; background:#fff; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.25); padding:18px 16px 30px;
 }
 .modalScroll{
   height:100%; overflow:auto; padding-right:6px;
@@ -208,12 +126,10 @@
 .modalArrow{ color:#9aa3ad; }
 .modalMemo{ color:#333; line-height:1.6; font-size:16px; white-space:pre-wrap; }
 
-/* Sortable互換（保険） */
+/* 触感向上 */
 .dragging{ opacity:.6; }
-
-/* 触感向上：iOS のタップハイライト無効化 */
 :root, .swl, .swl * { -webkit-tap-highlight-color: transparent; }
 
-/* Sortable の内部要素互換（保険） */
+/* Sortable 互換（保険） */
 :global(.sortable-fallback){ position:fixed !important; z-index:9999 !important; pointer-events:none !important; top:0; left:0; }
 :global(.sortable-ghost){ opacity:.6; }

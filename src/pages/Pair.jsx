@@ -6,9 +6,7 @@ import { loadHistory, saveHistory } from "../lib/history";
 export default function Pair() {
   const [items, setItems] = useState([]);
 
-  useEffect(() => {
-    setItems(loadHistory());
-  }, []);
+  useEffect(() => { setItems(loadHistory()); }, []);
 
   const handleDelete = (rowOrIndex) => {
     setItems((prev) => {
@@ -25,20 +23,13 @@ export default function Pair() {
     });
   };
 
-  const handleReorder = (next) => {
-    setItems(next);
-    saveHistory(next);
-  };
+  const handleReorder = (next) => { setItems(next); saveHistory(next); };
 
   return (
     <section>
       <div className="page-body2">
         <Current title="ペア履歴" className="pair" />
-        <SwipeActionsList
-          items={items}
-          onDelete={handleDelete}
-          onReorder={handleReorder}
-        />
+        <SwipeActionsList items={items} onDelete={handleDelete} onReorder={handleReorder} />
       </div>
     </section>
   );
