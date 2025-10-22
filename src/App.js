@@ -9,6 +9,7 @@ import Pair from "./pages/Pair";
 import Rate from "./pages/Rate";
 import GNavi from "./components/GNavi";
 import AboutDrawer from "./components/AboutDrawer";
+import ScrollToTop from "./components/ScrollToTop";
 
 import "./App.css";
 
@@ -75,6 +76,7 @@ export default function App() {
 
       {/* ページ本体 */}
       <main className="app-main">
+        <ScrollToTop /> 
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/pair" element={<Pair />} />
