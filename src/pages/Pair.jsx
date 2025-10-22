@@ -3,11 +3,6 @@ import Current from "../components/ui/Current";
 import SwipeActionsList from "../components/SwipeActionsList";
 import { loadHistory, saveHistory } from "../lib/history";
 
-/**
- * ペア履歴ページ：
- * - localStorage の履歴を読み込んで SwipeActionsList に表示
- * - SwipeActionsList 側で削除/並べ替えしたら保存
- */
 export default function Pair() {
   const [items, setItems] = useState([]);
 
