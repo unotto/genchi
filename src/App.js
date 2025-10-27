@@ -8,7 +8,7 @@ import Home from "./pages/Home";
 import Pair from "./pages/Pair";
 import Rate from "./pages/Rate";
 import GNavi from "./components/GNavi";
-import AboutDrawer from "./components/AboutDrawer.jsx";
+import AboutDrawer from "./components/AboutDrawer";
 import ScrollToTop from "./components/ScrollToTop";
 
 import "./App.css";
