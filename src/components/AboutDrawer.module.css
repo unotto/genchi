@@ -1,0 +1,31 @@
+.backupSection {
+  margin-top: 16px;
+  padding-top: 12px;
+  width: 100%;
+  text-align: center;
+  border-top: 1px solid #e5e7eb;
+}
+.backupSection h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #374151;
+}
+.backupSection button,
+.backupSection label {
+  display: inline-block;
+  background: #0077B6;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-right: 8px;
+}
+.restoreLabel { cursor: pointer; }
+
+.helpText{
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 14px;
+}
