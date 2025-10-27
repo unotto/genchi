@@ -1,8 +1,13 @@
 // src/components/AboutDrawer.jsx
-import React from "react";
+import React, { useState, useRef } from "react";
 import styles from "./AboutDrawer.module.css";
 
 export default function AboutDrawer({ open, onClose }) {
+  // 画面内の静かなステータス表示（alert をやめて二重ダイアログ回避）
+  const [status, setStatus] = useState("");
+  // 復元フォールバック用の隠し <input type="file">
+  const fileInputRef = useRef(null);
+
   // ===== 共通：バックアップデータ作成 =====
   const makeBackupBlob = () => {
     const items = JSON.parse(localStorage.getItem("genchi.history") || "[]");
@@ -15,52 +20,108 @@ export default function AboutDrawer({ open, onClose }) {
     return new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   };
 
-  // ===== 保存（iPhoneは共有シート優先→非対応なら通常DL） =====
+  // ===== 保存（ダイアログ1回だけ）
+  // 優先：showSaveFilePicker → navigator.share（iPhone向け）→ a.download
   const saveBackup = async () => {
+    setStatus("");
     const blob = makeBackupBlob();
-    const fileName = `genchi-history-${new Date().toISOString().slice(0,10)}.json`;
+    const fileName = `genchi-history-${new Date().toISOString().slice(0, 10)}.json`;
 
-    // iPhone/Safari 16.4+ はファイル付き Web Share API に対応
+    // ① File System Access API（Chrome/Edge/Android など。iOS Safari は未対応）
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: fileName,
+          types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        setStatus("保存しました。");
+        return;
+      } catch (e) {
+        if (e?.name === "AbortError") return; // ユーザーキャンセル
+        // 続行してフォールバック
+      }
+    }
+
+    // ② 共有シート（iOS 16.4+ 等）。ユーザーが「このiPhone内」を選べば iCloud を使わず保存可能
     try {
       const file = new File([blob], fileName, { type: "application/json" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           title: "Genchi バックアップ",
-          text: "保存先を選んでください（「このiPhone内」にするとiCloudを使いません）",
+          text: "保存先を選んでください。（「このiPhone内」を選べばiCloud不要）",
           files: [file],
         });
-        alert("共有シートを開きました。「このiPhone内」など任意の場所に保存できます。");
+        setStatus("共有シートから保存できます。");
         return;
       }
-    } catch (_) {
-      // 共有キャンセル等はDLにフォールバック
+    } catch {
+      // 続行してフォールバック
     }
 
-    // フォールバック：通常ダウンロード（Android/PC向けにも自然）
+    // ③ 最終：通常ダウンロード（iOS は表示が静か／Android・PCは自然）
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = fileName;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
-    alert("バックアップを保存しました。保存先（ダウンロード / ファイル等）をご確認ください。");
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    setStatus("ダウンロードしました。保存先（ファイル/ダウンロード）をご確認ください。");
   };
 
-  // ===== 復元（.json読み込み / 旧形式も許容） =====
-  const importHistory = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
+  // ===== 復元（ダイアログ1回だけ）
+  // 優先：showOpenFilePicker → 隠し input
+  const restoreBackup = async () => {
+    setStatus("");
+    if (window.showOpenFilePicker) {
       try {
-        const data = JSON.parse(e.target.result);
-        const items = Array.isArray(data) ? data : (data?.items || null);
-        if (!Array.isArray(items)) throw new Error("invalid");
-        localStorage.setItem("genchi.history", JSON.stringify(items));
-        alert("バックアップから履歴を復元しました。");
-        window.location.reload();
-      } catch {
-        alert("ファイル形式が違います。エクスポートした .json を選んでください。");
+        const [handle] = await window.showOpenFilePicker({
+          multiple: false,
+          types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+        });
+        const file = await handle.getFile();
+        await importHistory(file);
+        return;
+      } catch (e) {
+        if (e?.name === "AbortError") return;
       }
-    };
-    reader.readAsText(file);
+    }
+    // フォールバック：通常のファイル選択
+    fileInputRef.current?.click();
+  };
+
+  const importHistory = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const raw = JSON.parse(e.target.result);
+
+          // 修正ポイント：items配列をしっかり抽出
+          const items =
+            Array.isArray(raw) ? raw :
+            (raw.items && Array.isArray(raw.items) ? raw.items : []);
+
+          if (!items.length) throw new Error("no items");
+
+          localStorage.setItem("genchi.history", JSON.stringify(items));
+          setStatus("復元しました。ページを再読み込みします…");
+
+          // reloadを少し遅らせて確実に保存させる
+          setTimeout(() => window.location.reload(), 1000);
+
+        } catch (err) {
+          console.error(err);
+          setStatus("復元に失敗しました。バックアップファイルを確認してください。");
+        }
+        resolve();
+      };
+      reader.readAsText(file);
+    });
   };
 
   if (!open) return null;
@@ -112,29 +173,33 @@ export default function AboutDrawer({ open, onClose }) {
           <p>※参考用です。実際の取引や両替は自己判断で！</p>
         </div>
 
-        {/* ▼ バックアップ（保存／復元だけ） */}
+        {/* ▼ バックアップ（保存／復元のみ） */}
         <div className={styles.backupSection}>
           <h4>バックアップ</h4>
 
           <div className={styles.btnRow}>
             <button type="button" onClick={saveBackup}>💾 保存</button>
-            <label className={styles.restoreLabel}>
-              📥 復元
-              <input
-                type="file"
-                accept="application/json,.json"
-                onChange={(e) => e.target.files[0] && importHistory(e.target.files[0])}
-                style={{ display: "none" }}
-              />
-            </label>
+            <button type="button" onClick={restoreBackup}>📥 復元</button>
+            {/* フォールバック用の隠し input（iOS Safari などに備える） */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => e.target.files[0] && importHistory(e.target.files[0])}
+              style={{ display: "none" }}
+            />
           </div>
 
+          {/* 画面内ステータス（alertを使わない） */}
+          {status && <p className={styles.statusText}>{status}</p>}
+
           <p className={styles.helpText}>
-            保存：お使いの端末の「ファイル」や「ダウンロード」等に保存できます。
+            保存：お使いの端末の「ファイル」や「ダウンロード」へ保存できます。
             iPhoneは共有シートから「このiPhone内」を選ぶとiCloudを使いません。<br />
-            復元：保存したバックアップ（.json）を選ぶだけで元に戻せます。
+            復元：保存した .json を選ぶだけで元に戻せます。
           </p>
         </div>
+        {/* ▲ バックアップ */}
       </aside>
     </>
   );
