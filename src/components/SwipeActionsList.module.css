@@ -47,7 +47,7 @@
 
 /* ドラッグ中：90%・半透明・影 + 背景を #E5E5E5 に */
 .swl__row.isDragging {
-  transform: scale(0.9);
+  transform: scale(0.95);
   opacity: .7;
   box-shadow: 0 5px 14px rgba(0,0,0,.18);
   z-index: 5;
