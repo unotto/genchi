@@ -29,7 +29,11 @@
     <!-- ▼ 既存 -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <title>Pair History</title>
-
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/pwabuilder-sw.js');
+      }
+    </script>
     <style>
       body {
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans";

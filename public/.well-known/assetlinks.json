@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.genchi.twa",
+        "sha256_cert_fingerprints": ["8E:F4:80:69:16:72:E8:81:A3:68:12:2B:EA:30:C2:82:ED:9E:99:31:C7:AD:BF:76:ED:76:13:52:EE:CC:7C:C8"]
+      }
+    }]
