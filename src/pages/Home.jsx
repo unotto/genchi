@@ -62,7 +62,7 @@ export default function Home() {
         // 2行目：一単位（小さめ）
         const line2 = (
           <small style={{ display: "block", fontSize: "0.9em", color: "#6B7280", marginTop: 2 }}>
-            1 {baseSym} = {rate.toLocaleString()} {quoteSym}
+            {baseSym}1 = {quoteSym}{rate.toLocaleString()}
           </small>
         );
         setResultNode(<>{line1}{line2}</>);
@@ -99,12 +99,15 @@ function handleRegister() {
 
       const now = new Date();
       const dateJP = now.toLocaleDateString("ja-JP");
+      
+      const baseSym = symbolOf(base);
+      const quoteSym = symbolOf(quote);
 
       addHistory({
-        date: dateJP,
-        left: `${num.toLocaleString()} ${symbolOf(base)}`,
-        right: `${converted.toLocaleString()} ${symbolOf(quote)}\n1 ${symbolOf(base)} = ${rate.toLocaleString()} ${symbolOf(quote)}`,
-        memo: memo || "",
+       date: dateJP,
+       left: `${baseSym}${num.toLocaleString()}`,
+       right: `${quoteSym}${converted.toLocaleString()}\n${baseSym}1 = ${quoteSym}${rate.toLocaleString()}`,
+       memo: memo || "",
       });
 
 
@@ -132,19 +135,17 @@ function handleRegister() {
         <form className="card-form" onSubmit={(e)=>e.preventDefault()}>
           {/* 通貨ペア選択（日本語ラベル） */}
           <Field>
-            <label className="sr-only" htmlFor="home-pair">通貨ペア</label>
-            <div className="selectWrap">
-              <select
-                id="home-pair"
-                className="select"
-                value={pair}
-                onChange={(e) => setPair(e.target.value)}
-              >
-                <option value="">通貨ペア選択</option>
-                {PAIRS.map((p) => (
-                  <option key={p} value={p}>{pairLabel(p)}</option>
-                ))}
-              </select>
+            <div className="oneInput oneInput--prefix">
+              {rightUnit && <span className="oneInput__unit oneInput__unit--prefix">{rightUnit}</span>}
+              <input
+                id="amount"
+                className="oneInput__control"
+                type="text"
+                inputMode="decimal"
+                placeholder="金額入力（数値のみ）"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </div>
           </Field>
 
