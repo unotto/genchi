@@ -56,7 +56,7 @@ export default function Home() {
         // 1行目：換算結果
         const line1 = (
           <span>
-            {num.toLocaleString()} {baseSym} → {converted.toLocaleString()} {quoteSym}
+            {baseSym}{num.toLocaleString()} → {quoteSym}{converted.toLocaleString()}
           </span>
         );
         // 2行目：一単位（小さめ）

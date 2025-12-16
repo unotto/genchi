@@ -31,7 +31,9 @@
     <title>Pair History</title>
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/pwabuilder-sw.js');
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/pwabuilder-sw.js');
+        });
       }
     </script>
     <style>
