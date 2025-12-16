@@ -101,11 +101,12 @@ function handleRegister() {
       const dateJP = now.toLocaleDateString("ja-JP");
       const baseSym = symbolOf(base);
       const quoteSym = symbolOf(quote);
-
+      
       addHistory({
         date: dateJP,
         left: `${baseSym}${num.toLocaleString()}`,
         right: `${quoteSym}${converted.toLocaleString()}\n${baseSym}1 = ${quoteSym}${rate.toLocaleString()}`,
+        memo: memo || "",
       });
 
 
@@ -133,6 +134,24 @@ function handleRegister() {
         <form className="card-form" onSubmit={(e)=>e.preventDefault()}>
           {/* 通貨ペア選択（日本語ラベル） */}
           <Field>
+            <label className="sr-only" htmlFor="home-pair">通貨ペア</label>
+            <div className="selectWrap">
+              <select
+                id="home-pair"
+                className="select"
+                value={pair}
+                onChange={(e) => setPair(e.target.value)}
+              >
+                <option value="">通貨ペア選択</option>
+                {PAIRS.map((p) => (
+                  <option key={p} value={p}>{pairLabel(p)}</option>
+                ))}
+              </select>
+            </div>
+          </Field>
+
+          {/* 金額入力：一体型（右端に単位“記号”を表示） */}
+          <Field>
             <div className="oneInput">
               {rightUnit && <span className="oneInput__unit oneInput__unit--left">{rightUnit}</span>}
               <input
@@ -144,22 +163,6 @@ function handleRegister() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
-            </div>
-          </Field>
-
-          {/* 金額入力：一体型（右端に単位“記号”を表示） */}
-          <Field>
-            <div className="oneInput">
-              <input
-                id="amount"
-                className="oneInput__control"
-                type="text"
-                inputMode="decimal"
-                placeholder="金額入力（数値のみ）"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-              {rightUnit && <span className="oneInput__unit">{rightUnit}</span>}
             </div>
           </Field>
 
