@@ -99,15 +99,13 @@ function handleRegister() {
 
       const now = new Date();
       const dateJP = now.toLocaleDateString("ja-JP");
-      
       const baseSym = symbolOf(base);
       const quoteSym = symbolOf(quote);
 
       addHistory({
-       date: dateJP,
-       left: `${baseSym}${num.toLocaleString()}`,
-       right: `${quoteSym}${converted.toLocaleString()}\n${baseSym}1 = ${quoteSym}${rate.toLocaleString()}`,
-       memo: memo || "",
+        date: dateJP,
+        left: `${baseSym}${num.toLocaleString()}`,
+        right: `${quoteSym}${converted.toLocaleString()}\n${baseSym}1 = ${quoteSym}${rate.toLocaleString()}`,
       });
 
 
@@ -135,8 +133,8 @@ function handleRegister() {
         <form className="card-form" onSubmit={(e)=>e.preventDefault()}>
           {/* 通貨ペア選択（日本語ラベル） */}
           <Field>
-            <div className="oneInput oneInput--prefix">
-              {rightUnit && <span className="oneInput__unit oneInput__unit--prefix">{rightUnit}</span>}
+            <div className="oneInput">
+              {rightUnit && <span className="oneInput__unit oneInput__unit--left">{rightUnit}</span>}
               <input
                 id="amount"
                 className="oneInput__control"
