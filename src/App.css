@@ -246,13 +246,13 @@ html, body {
   width: 100%;
   background: #fff;
   border-radius: 14px;
-  padding: 12px 16px 12px 12px;
+  padding: 12px 16px 12px 10px;
   box-shadow: 0 2px 0 rgba(0,0,0,0.1);
   border: 1px solid transparent;
 }
 
 .oneInput--prefix .oneInput__unit--prefix{
-  margin-left: -5px;
+  margin-right: 6px;  
 }
 
 .oneInput:focus-within {
@@ -276,6 +276,10 @@ html, body {
   pointer-events: none; /* クリックを通す */
 }
 
+/* 結果表示（ResultBox内）の通貨表記：記号と数字の間を空ける */
+.money__sym{
+  margin-right: 6px; /* 好みで 2〜6px */
+}
 
 /* ペア履歴リンク */
 .link-row{

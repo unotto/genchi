@@ -53,16 +53,27 @@ export default function Home() {
         const baseSym = symbolOf(base);
         const quoteSym = symbolOf(quote);
 
+        const Money = ({ sym, children }) => (
+          <span className="money">
+            <span className="money__sym">{sym}</span>
+            <span className="money__num">{children}</span>
+          </span>
+        );
+
         // 1行目：換算結果
         const line1 = (
           <span>
-            {baseSym}{num.toLocaleString()} → {quoteSym}{converted.toLocaleString()}
+            <Money sym={baseSym}>{num.toLocaleString()}</Money>
+            {" → "}
+            <Money sym={quoteSym}>{converted.toLocaleString()}</Money>
           </span>
         );
         // 2行目：一単位（小さめ）
         const line2 = (
           <small style={{ display: "block", fontSize: "0.9em", color: "#6B7280", marginTop: 2 }}>
-            {baseSym}1 = {quoteSym}{rate.toLocaleString()}
+            <Money sym={baseSym}>1</Money>
+            {" = "}
+            <Money sym={quoteSym}>{rate.toLocaleString()}</Money>
           </small>
         );
         setResultNode(<>{line1}{line2}</>);
