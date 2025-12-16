@@ -251,6 +251,10 @@ html, body {
   border: 1px solid transparent;
 }
 
+.oneInput--prefix .oneInput__unit--prefix{
+  margin-left: -5px;
+}
+
 .oneInput:focus-within {
   border-color: rgba(0,119,182,.35);
   box-shadow: 0 0 0 3px rgba(0,119,182,.18);
@@ -262,7 +266,6 @@ html, body {
   outline: none;
   background: transparent;
   font-size: 1rem;
-  font-weight: 600;
   color: var(--text);
 }
 
