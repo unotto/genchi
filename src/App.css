@@ -251,9 +251,6 @@ html, body {
   border: 1px solid transparent;
 }
 
-.oneInput--prefix .oneInput__unit--prefix{
-  margin-right: 6px;  
-}
 
 .oneInput:focus-within {
   border-color: rgba(0,119,182,.35);
@@ -271,14 +268,15 @@ html, body {
 
 .oneInput__unit {
   font-weight: 600;
+  margin-right: 4px; 
   font-size: 0.95rem;
   color: var(--muted);
-  pointer-events: none; /* クリックを通す */
+  pointer-events: none; 
 }
 
 /* 結果表示（ResultBox内）の通貨表記：記号と数字の間を空ける */
 .money__sym{
-  margin-right: 6px; /* 好みで 2〜6px */
+  margin-right: 4px; 
 }
 
 /* ペア履歴リンク */
