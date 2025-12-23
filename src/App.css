@@ -268,15 +268,9 @@ html, body {
 
 .oneInput__unit {
   font-weight: 600;
-  margin-right: 4px; 
   font-size: 0.95rem;
   color: var(--muted);
   pointer-events: none; 
-}
-
-/* 結果表示（ResultBox内）の通貨表記：記号と数字の間を空ける */
-.money__sym{
-  margin-right: 4px; 
 }
 
 /* ペア履歴リンク */
