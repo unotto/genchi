@@ -278,6 +278,20 @@ html, body {
   pointer-events: none; 
 }
 
+.toast{
+  position: fixed;
+  left: 50%;
+  bottom: 86px; /* GNaviがあるなら少し上 */
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.92);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  z-index: 9999;
+  box-shadow: 0 8px 22px rgba(0,0,0,.25);
+}
+
 /* ペア履歴リンク */
 .link-row{
   text-align:right;
