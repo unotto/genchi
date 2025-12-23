@@ -266,9 +266,14 @@ html, body {
   color: var(--text);
 }
 
+.oneInput__unit--left {
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
+
 .oneInput__unit {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--muted);
   pointer-events: none; 
 }
