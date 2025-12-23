@@ -64,7 +64,7 @@ export default function Home() {
         const line1 = (
           <span>
             <Money sym={baseSym}>{num.toLocaleString()}</Money>
-            {"  →  "}
+            {"\u00A0\u00A0→\u00A0\u00A0"}
             <Money sym={quoteSym}>{converted.toLocaleString()}</Money>
           </span>
         );
@@ -72,7 +72,7 @@ export default function Home() {
         const line2 = (
           <small style={{ display: "block", fontSize: "0.9em", color: "#6B7280", marginTop: 2 }}>
             <Money sym={baseSym}>1</Money>
-            {"  =  "}
+            {"\u00A0\u00A0=\u00A0\u00A0"}
             <Money sym={quoteSym}>{rate.toLocaleString()}</Money>
           </small>
         );
