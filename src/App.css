@@ -279,7 +279,6 @@ html, body {
 }
 
 .toast {
-.toast {
   position: fixed;
   left: 50%;
   bottom: 132px;
@@ -298,8 +297,6 @@ html, body {
   z-index: 9999;
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
   pointer-events: none;
-}
-
 }
 
 /* ペア履歴リンク */
