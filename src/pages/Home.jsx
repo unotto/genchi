@@ -217,9 +217,7 @@ export default function Home() {
       </div>
 
       {/* トースト */}
-      {toast && (
-        <div className="toast" data-message={toast} role="status" />
-      )}
+      {toast && <div className="toast">{toast}</div>}
     </section>
   );
 }

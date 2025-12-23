@@ -280,26 +280,20 @@ html, body {
 
 .toast {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  left: 50%;
+  bottom: 96px; /* GNaviがある前提 */
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.95); /* ほぼ黒 */
+  color: #fff;
+  padding: 20px 24px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
   z-index: 9999;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  pointer-events: none;
 }
 
-.toast::before {
-  content: attr(data-message);
-  background: #ffffff;
-  color: #111827;
-  padding: 16px 20px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 500;
-  box-shadow: 0 20px 40px rgba(0,0,0,.25);
-  max-width: 80%;
-  text-align: center;
-}
 /* ペア履歴リンク */
 .link-row{
   text-align:right;
