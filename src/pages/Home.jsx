@@ -10,7 +10,7 @@ import { getRate, parsePair, symbolOf, jpName } from "../lib/rates";
 import { addHistory } from "../lib/history";
 import { Link } from "react-router-dom";
 
-// 必須ペア（指定どおり）
+// 必須ペア
 const PAIRS = [
   "USD-JPY","EUR-JPY","GBP-JPY","AUD-JPY","CAD-JPY","NZD-JPY","CHF-JPY",
   "KRW-JPY","CNH-JPY","HKD-JPY","TWD-JPY","THB-JPY","SGD-JPY","PHP-JPY",
@@ -19,20 +19,23 @@ const PAIRS = [
 ];
 
 export default function Home() {
-  const [pair, setPair] = useState("");     // 例: "USD-JPY"
-  const [amount, setAmount] = useState(""); // 入力金額（テキスト）
-  const [memo, setMemo] = useState("");     // 任意
-  const [resultNode, setResultNode] = useState(null); // ResultBox に渡す JSX
+  const [pair, setPair] = useState("");
+  const [amount, setAmount] = useState("");
+  const [memo, setMemo] = useState("");
+  const [resultNode, setResultNode] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ペア変更時に金額をリセット（あなたの要望）
+  // ★ トースト用
+  const [toast, setToast] = useState("");
+
+  // ペア変更時にリセット
   useEffect(() => {
     if (!pair) return;
-    setAmount("");              // 金額クリア
-    setResultNode(null);        // 結果もクリア
+    setAmount("");
+    setResultNode(null);
   }, [pair]);
 
-  // 入力中でも即時で換算したい → pair と amount を監視
+  // 即時計算
   useEffect(() => {
     async function calc() {
       const { base, quote } = parsePair(pair);
@@ -40,18 +43,17 @@ export default function Home() {
         setResultNode(null);
         return;
       }
+
       const num = parseFloat(String(amount).replace(/,/g, ""));
       if (!amount || Number.isNaN(num)) {
         setResultNode(null);
         return;
       }
+
       try {
         setIsLoading(true);
-        const rate = await getRate(base, quote); // API呼び出し
+        const rate = await getRate(base, quote);
         const converted = Math.round(num * rate * 100) / 100;
-
-        const baseSym = symbolOf(base);
-        const quoteSym = symbolOf(quote);
 
         const Money = ({ sym, children }) => (
           <span className="money">
@@ -60,27 +62,29 @@ export default function Home() {
           </span>
         );
 
-        // 1行目：換算結果
         const line1 = (
           <span>
-            <Money sym={baseSym}>{num.toLocaleString()}</Money>
-            {"\u00A0\u00A0→\u00A0\u00A0"}
-            <Money sym={quoteSym}>{converted.toLocaleString()}</Money>
+            <Money sym={symbolOf(base)}>{num.toLocaleString()}</Money>
+            {" → "}
+            <Money sym={symbolOf(quote)}>{converted.toLocaleString()}</Money>
           </span>
         );
-        // 2行目：一単位（小さめ）
+
         const line2 = (
           <small style={{ display: "block", fontSize: "0.9em", color: "#6B7280", marginTop: 2 }}>
-            <Money sym={baseSym}>1</Money>
-            {"\u00A0\u00A0=\u00A0\u00A0"}
-            <Money sym={quoteSym}>{rate.toLocaleString()}</Money>
+            <Money sym={symbolOf(base)}>1</Money>
+            {" = "}
+            <Money sym={symbolOf(quote)}>{rate.toLocaleString()}</Money>
           </small>
         );
+
         setResultNode(<>{line1}{line2}</>);
       } catch (e) {
         console.error(e);
         setResultNode(
-          <span style={{ color: "#EF4444" }}>レート取得に失敗しました。時間を置いて再度お試しください。</span>
+          <span style={{ color: "#EF4444" }}>
+            レート取得に失敗しました
+          </span>
         );
       } finally {
         setIsLoading(false);
@@ -89,48 +93,52 @@ export default function Home() {
     calc();
   }, [pair, amount]);
 
-  // 金額の右横に出す単位（記号）
+  // 金額入力の単位
   const rightUnit = useMemo(() => {
     const { base } = parsePair(pair);
     return symbolOf(base) || "";
   }, [pair]);
 
   // 履歴登録
-  // 履歴登録
-function handleRegister() {
-  const { base, quote } = parsePair(pair);
-  const num = parseFloat(String(amount).replace(/,/g, ""));
-  if (!base || !quote) return alert("通貨ペアを選んでください。");
-  if (!amount || Number.isNaN(num)) return alert("金額は数値で入力してください。");
+  async function handleRegister() {
+    const { base, quote } = parsePair(pair);
+    const num = parseFloat(String(amount).replace(/,/g, ""));
 
-  (async () => {
+    if (!base || !quote) {
+      showToast("通貨ペアを選んでください");
+      return;
+    }
+    if (!amount || Number.isNaN(num)) {
+      showToast("金額を入力してください");
+      return;
+    }
+
     try {
       const rate = await getRate(base, quote);
       const converted = Math.round(num * rate * 100) / 100;
 
       const now = new Date();
       const dateJP = now.toLocaleDateString("ja-JP");
-      const baseSym = symbolOf(base);
-      const quoteSym = symbolOf(quote);
-      
+
       addHistory({
         date: dateJP,
-        left: `${baseSym}${num.toLocaleString()}`,
-        right: `${quoteSym}${converted.toLocaleString()}\n${baseSym}1 = ${quoteSym}${rate.toLocaleString()}`,
+        left: `${symbolOf(base)}${num.toLocaleString()}`,
+        right: `${symbolOf(quote)}${converted.toLocaleString()}\n${symbolOf(base)}1 = ${symbolOf(quote)}${rate.toLocaleString()}`,
         memo: memo || "",
       });
 
-
-      alert("ペア履歴に追加しました。");
-    } catch (err) {
-      console.error(err);
-      alert("登録時にレート取得に失敗しました。");
+      showToast("ペア履歴に追加しました");
+    } catch (e) {
+      console.error(e);
+      showToast("登録に失敗しました");
     }
-  })();
-}
+  }
 
+  function showToast(message) {
+    setToast(message);
+    setTimeout(() => setToast(""), 1800);
+  }
 
-  // 表示ラベル（日本語）
   function pairLabel(p) {
     const { base, quote } = parsePair(p);
     if (!base || !quote) return p;
@@ -142,52 +150,43 @@ function handleRegister() {
       <div className="page-body">
         <Current title="ホーム" className="home" />
 
-        <form className="card-form" onSubmit={(e)=>e.preventDefault()}>
-          {/* 通貨ペア選択（日本語ラベル） */}
+        <form className="card-form" onSubmit={(e) => e.preventDefault()}>
           <Field>
-            <label className="sr-only" htmlFor="home-pair">通貨ペア</label>
-            <div className="selectWrap">
-              <select
-                id="home-pair"
-                className="select"
-                value={pair}
-                onChange={(e) => setPair(e.target.value)}
-              >
-                <option value="">通貨ペア選択</option>
-                {PAIRS.map((p) => (
-                  <option key={p} value={p}>{pairLabel(p)}</option>
-                ))}
-              </select>
-            </div>
+            <select
+              className="select"
+              value={pair}
+              onChange={(e) => setPair(e.target.value)}
+            >
+              <option value="">通貨ペア選択</option>
+              {PAIRS.map((p) => (
+                <option key={p} value={p}>{pairLabel(p)}</option>
+              ))}
+            </select>
           </Field>
 
-          {/* 金額入力：一体型（右端に単位“記号”を表示） */}
           <Field>
             <div className="oneInput">
-              {rightUnit && <span className="oneInput__unit oneInput__unit--left">{rightUnit}</span>}<input
-                id="amount"
+              {rightUnit && <span className="oneInput__unit oneInput__unit--left">{rightUnit}</span>}
+              <input
                 className="oneInput__control"
                 type="text"
                 inputMode="decimal"
-                placeholder="金額入力（数値のみ）"
+                placeholder="金額入力"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
           </Field>
 
-          {/* 結果表示（自動） */}
           <Field>
             <ResultBox
-              value={isLoading ? <span>計算中...</span> : resultNode}
-              placeholder={<>入力結果</>}
+              value={isLoading ? "計算中…" : resultNode}
+              placeholder="入力結果"
             />
           </Field>
 
-          {/* メモ */}
           <Field>
             <textarea
-              id="memo"
               className="textarea like-input"
               rows={4}
               placeholder="メモ"
@@ -196,25 +195,31 @@ function handleRegister() {
             />
           </Field>
 
-          {/* ボタン行（登録のみ） */}
           <div className="actions">
-            <Button variant="outline" onClick={handleRegister}>★通貨ペアを登録</Button>
+            <Button variant="outline" onClick={handleRegister}>
+              ★ 通貨ペアを登録
+            </Button>
           </div>
 
-          {/* ペア履歴リンク（左にアイコン追加） */}
           <p className="link-row">
             <Link to="/pair" className="inline-link">
               <img
                 src={pairIconR}
                 alt=""
-                className="icon"
-                style={{ width: 16, height: 16, verticalAlign: "-2px", marginRight: 2 }}
+                style={{ width: 16, marginRight: 4 }}
               />
               ペア履歴
             </Link>
           </p>
         </form>
       </div>
+
+      {/* トースト */}
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
     </section>
   );
 }
