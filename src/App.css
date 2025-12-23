@@ -278,20 +278,28 @@ html, body {
   pointer-events: none; 
 }
 
-.toast{
+.toast {
   position: fixed;
-  left: 50%;
-  bottom: 86px; /* GNaviがあるなら少し上 */
-  transform: translateX(-50%);
-  background: rgba(17, 24, 39, 0.92);
-  color: #fff;
-  padding: 10px 14px;
-  border-radius: 999px;
-  font-size: 14px;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 9999;
-  box-shadow: 0 8px 22px rgba(0,0,0,.25);
 }
 
+.toast::before {
+  content: attr(data-message);
+  background: #ffffff;
+  color: #111827;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 20px 40px rgba(0,0,0,.25);
+  max-width: 80%;
+  text-align: center;
+}
 /* ペア履歴リンク */
 .link-row{
   text-align:right;
@@ -350,23 +358,21 @@ html, body {
   position: relative;
 }
 .selectWrap::after {
-  content: "";
+  content: "▼";
   position: absolute;
   right: 12px;
   top: 50%;
-  width: 0; height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 7px solid #6B7280; /* 三角（下向き） */
   transform: translateY(-50%);
-  pointer-events: none; /* クリック透過 */
+  font-size: 10px;
+  color: #6B7280;
+  pointer-events: none;
 }
 
 /* ネイティブ<select>をカード風に */
 .select {
   width: 100%;
   padding: 12px 40px 12px 12px; /* 右は三角スペース確保 */
-  border: 1px solid #E5E7EB;
+  border: none;
   border-radius: 12px;
   font-size: 0.95rem;
   color: #333;
@@ -375,6 +381,7 @@ html, body {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  padding-right: 28px;
   box-shadow: 0 2px 0 rgba(0,0,0,.08);
 }
 .select:focus {

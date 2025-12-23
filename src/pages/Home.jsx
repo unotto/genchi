@@ -152,6 +152,7 @@ export default function Home() {
 
         <form className="card-form" onSubmit={(e) => e.preventDefault()}>
           <Field>
+            <div className="selectWrap">
             <select
               className="select"
               value={pair}
@@ -162,6 +163,7 @@ export default function Home() {
                 <option key={p} value={p}>{pairLabel(p)}</option>
               ))}
             </select>
+            </div>
           </Field>
 
           <Field>
@@ -216,9 +218,7 @@ export default function Home() {
 
       {/* トースト */}
       {toast && (
-        <div className="toast" role="status">
-          {toast}
-        </div>
+        <div className="toast" data-message={toast} role="status" />
       )}
     </section>
   );
