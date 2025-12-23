@@ -164,8 +164,7 @@ function handleRegister() {
           {/* 金額入力：一体型（右端に単位“記号”を表示） */}
           <Field>
             <div className="oneInput">
-              {rightUnit && <span className="oneInput__unit oneInput__unit--left">{rightUnit}</span>}
-              <input
+              {rightUnit && <span className="oneInput__unit oneInput__unit--left">{rightUnit}</span>}<input
                 id="amount"
                 className="oneInput__control"
                 type="text"
